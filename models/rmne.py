@@ -1,29 +1,15 @@
 import torch
-#import torch.nn as nn
 from torch.autograd import Variable
 import os
 import networkx as nx
 import numpy as np
 import random
 import gc
-#import time
-#from sklearn import preprocessing
-#from collections import OrderedDict
-#import pickle
-#import sys
-#import pathlib
 import argparse
-#import seaborn as sns
 import pandas as pd
 
 from models.abstract_model import BasicModel
 
-#sys.path.clear
-#current_dir_path = str(pathlib.Path().resolve())
-
-#sys.path.clear()
-#sys.path.insert(0, current_dir_path + "/RMNE")
-#sys.path.insert(0, current_dir_path)
 
 ###############################################################################################################
 ###################
@@ -35,7 +21,6 @@ from RMNE.utils import *
 import RMNE.generate_pairs as generate_pairs
 import RMNE.generate_roles as generate_roles
 from RMNE.generate_roles import add_one_node
-#from RMNE.args_parser import get_parser
 
 
 """

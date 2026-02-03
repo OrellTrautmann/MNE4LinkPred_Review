@@ -1,24 +1,9 @@
 import numpy as np
-#import random
 import pandas as pd
 import torch
-#import sys
-#import os
-#import pathlib
 from collections import defaultdict
-#import gensim
-#import networkx
-#import sklearn
-#import sqlalchemy
 
 from models.abstract_model import BasicModel
-
-#sys.path.clear
-#current_dir_path = str(pathlib.Path().resolve())
-
-#sys.path.clear()
-#sys.path.insert(0, current_dir_path + "/LIAMNE")
-#sys.path.insert(0, current_dir_path)
 
 ###############################################################################################################
 ###################
