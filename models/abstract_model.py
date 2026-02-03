@@ -18,8 +18,8 @@ import torch
 import sys
 import os
 import pathlib
-sys.path.clear
-current_dir_path = str(pathlib.Path().resolve())
+#sys.path.clear
+#current_dir_path = str(pathlib.Path().resolve())
 
 ###############################################################################################################
 ###################
@@ -28,7 +28,7 @@ current_dir_path = str(pathlib.Path().resolve())
 
 class BasicModel(object):
     '''
-    A class used to encode a multiplex network embedding
+    Abstract class used to encode a multiplex network embedding
 
     ...
 
@@ -48,14 +48,19 @@ class BasicModel(object):
     Methods
     -------
     __init__(params)
+        Constructor of class object
         Initializes the model with preselected parameters
     fit(train_dataset, seed=1234)
+        Public class method which will be called upon from outside the class
         Preprocesses and fits the model 
-    preprocessing(train_dataset) [not implemented in BasicModel]
-        Preprocess the input dataset into something that is an input to the self.model_fit if it exists
-    model_fit(train_dataset) [not implemented in BasicModel]
+    _preprocessing(train_dataset) [not implemented in BasicModel]
+        Private class method only to be accessed from within the class
+        Preprocess the input dataset into something that is an input to the self._model_fit if it exists
+    _model_fit(train_dataset) [not implemented in BasicModel]
+        Private class method only to be accessed from within the class
         Fits the model on train_dataset
     model_return() [not implemented in BasicModel]
+        Public class method which will be called upon from outside the class
         Formats the embeddings to be returned
     '''
     def __init__(self):
@@ -74,7 +79,7 @@ class BasicModel(object):
 
     def fit(self, train_dataset, seed=1234):
         '''
-        Fitting the model on the training dataset.
+        Fitting the embedding model on the training dataset.
 
         Not implemented in the BasicModel class.
 
@@ -89,11 +94,11 @@ class BasicModel(object):
         '''
         np.random.seed(seed)
         random.seed(seed)
-        self.model_fit(self.preprocessing(train_dataset))
+        self._model_fit(self._preprocessing(train_dataset))
 
-    def preprocessing(self, dataset, is_training=True):
+    def _preprocessing(self, dataset):
         '''
-        Preprocessing step, which converts elements of a dataset (ratings matrix, user feature matrix, item feature matrix) into appropriate inputs to the classifier (e.g., X feature matrix for each (user, item) pair, y response vector).
+        Preprocessing step, which converts elements of a dataset (multiplex networks and node attribute matrix) for the model 
 
         <Not implemented in the BasicModel class.>
 
@@ -101,19 +106,18 @@ class BasicModel(object):
 
         Parameters
         ----------
-        dataset : stanscofi.Dataset
+        dataset : 
             dataset to convert
-        is_training : bool
-            is the preprocessing prior to training (true) or testing (false)?
+
 
         Returns
         ----------
         ... : ...
-            appropriate inputs to the classifier (vary across algorithms)
+            appropriate inputs to the embedding model (varies across algorithms)
         '''
         raise NotImplemented
 
-    def model_fit(self):
+    def _model_fit(self):
         '''
         Fitting the model on the training dataset.
 
@@ -124,7 +128,7 @@ class BasicModel(object):
         Parameters
         ----------
         ... : ...
-            appropriate inputs to the classifier (vary across algorithms)
+            appropriate inputs to the embedding model (varies across algorithms)
         '''
         raise NotImplemented
     
@@ -139,6 +143,6 @@ class BasicModel(object):
         Parameters
         ----------
         ... : ...
-            appropriate inputs to the classifier (vary across algorithms)
+            appropriate inputs to the embedding model (varies across algorithms)
         '''
         raise NotImplemented

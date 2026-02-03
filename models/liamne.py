@@ -1,24 +1,24 @@
 import numpy as np
-import random
+#import random
 import pandas as pd
 import torch
-import sys
-import os
-import pathlib
+#import sys
+#import os
+#import pathlib
 from collections import defaultdict
-import gensim
-import networkx
-import sklearn
-import sqlalchemy
+#import gensim
+#import networkx
+#import sklearn
+#import sqlalchemy
 
-from models import BasicModel
+from models.abstract_model import BasicModel
 
-sys.path.clear
-current_dir_path = str(pathlib.Path().resolve())
+#sys.path.clear
+#current_dir_path = str(pathlib.Path().resolve())
 
-sys.path.clear()
-sys.path.insert(0, current_dir_path + "/LIAMNE")
-sys.path.insert(0, current_dir_path)
+#sys.path.clear()
+#sys.path.insert(0, current_dir_path + "/LIAMNE")
+#sys.path.insert(0, current_dir_path)
 
 ###############################################################################################################
 ###################
@@ -49,12 +49,12 @@ class liamne(BasicModel):
     Methods
     -------
     Same as BasicModel class
-    preprocessing(train_dataset)
+    _preprocessing(train_dataset)
         Preprocesses the input dataset into something that is an input to fit
-    model_fit(train_dataset)
+    fit(dataset)
+        In inherited method from BasicModel which calls on _preprocessing and _model_fit
+    _model_fit(train_dataset)
         Preprocesses and fits the model
-    model_predict_proba(test_dataset)
-        Outputs embedding matrix of the fitted model on test_dataset
     model_return()
         reformats the embedding matrix to a dataframe used in the pipeline
     '''
@@ -72,11 +72,11 @@ class liamne(BasicModel):
         
         super(liamne, self).__init__()
         self.name = "LIAMNE"
-        self.embedding = LIAMNE_model.LIAMNE(params["node_num"], params["layer_num"], params["emb_size"], None, None)
-        self.node_num = params["node_num"] - 1
-        self.target_layer = params["target_layer"]
+        self.model = LIAMNE_model.LIAMNE(params.get("node_num"), params.get("layer_num"), params.get("emb_size"), None, None)
+        self.node_num = params.get("node_num") - 1
+        self.target_layer = params.get("target_layer")
 
-    def preprocessing(self, dataset, is_training=True):
+    def _preprocessing(self, dataset):
         '''
         Preprocessing step, which converts the network of dataframe format into dictionary list.
 
@@ -103,7 +103,7 @@ class liamne(BasicModel):
         
         return train_data
     
-    def model_fit(self, data):
+    def _model_fit(self, data):
         """
         Constructs network embedding from network data in form on dict list
         
@@ -124,15 +124,15 @@ class liamne(BasicModel):
         
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         
-        self.embedding.to(device)
+        self.model.to(device)
     
         bce = torch.nn.BCEWithLogitsLoss()
-        optim = torch.optim.Adam(self.embedding.parameters(), lr=1e-4)
+        optim = torch.optim.Adam(self.model.parameters(), lr=1e-4)
     
         for epoch in range(10):
-            layer_embs = self.embedding.layer_embs.detach().cpu()
-            new_network, new_neighs = LIAMNE_utils.under_sample(nodes, train_data, self.embedding.layer_num, self.target_layer-1, layer_embs, .2, .6)
-            all_neighs = LIAMNE_utils.generate_neighs(new_neighs, 10, self.embedding.layer_num, self.node_num)
+            layer_embs = self.model.layer_embs.detach().cpu()
+            new_network, new_neighs = LIAMNE_utils.under_sample(nodes, train_data, self.model.layer_num, self.target_layer-1, layer_embs, .2, .6)
+            all_neighs = LIAMNE_utils.generate_neighs(new_neighs, 10, self.model.layer_num, self.node_num)
             tmp_neighs = torch.LongTensor(all_neighs)
     
             pairs = []
@@ -153,15 +153,15 @@ class liamne(BasicModel):
             for i, pos_pairs in enumerate(data_iter):
                 optim.zero_grad()
     
-                final_emb_i = self.embedding(pos_pairs[0], pos_pairs[1], pos_pairs[3])
-                final_emb_j = self.embedding(pos_pairs[0], pos_pairs[2], pos_pairs[4])
+                final_emb_i = self.model(pos_pairs[0], pos_pairs[1], pos_pairs[3])
+                final_emb_j = self.model(pos_pairs[0], pos_pairs[2], pos_pairs[4])
                 
                 score = torch.sum(final_emb_i*final_emb_j, dim=1)
                 
-                neg_pairs = LIAMNE_utils.gen_neg_pairs(self.node_num, self.embedding.layer_num-1, self.target_layer-1, 1, pos_pairs[1], new_neighs)
+                neg_pairs = LIAMNE_utils.gen_neg_pairs(self.node_num, self.model.layer_num-1, self.target_layer-1, 1, pos_pairs[1], new_neighs)
                 neg_pairs = np.array(neg_pairs)
                 
-                final_emb_x = self.embedding(neg_pairs[:, 0], neg_pairs[:, 2], tmp_neighs[neg_pairs[:, 2]])
+                final_emb_x = self.model(neg_pairs[:, 0], neg_pairs[:, 2], tmp_neighs[neg_pairs[:, 2]])
                 neg_score = torch.sum(final_emb_i*final_emb_x, dim=1)
     
                 labels = torch.ones(len(score)).to(device)
@@ -178,7 +178,7 @@ class liamne(BasicModel):
             nodes_t = torch.LongTensor(list(range(self.node_num+1))).to(device)
             neighs_t = tmp_neighs[nodes_t]
 
-            self.embs = self.embedding.forward(layers_t, nodes_t, neighs_t).cpu().detach()
+            self.embeddings = self.model.forward(layers_t, nodes_t, neighs_t).cpu().detach()
             
     
     def model_return(self):
@@ -190,7 +190,7 @@ class liamne(BasicModel):
             reformats the computed embeddings to dataframe where each column represents the embedding vector on one node.
 
         """
-        W = pd.DataFrame(self.embs.numpy())
+        W = pd.DataFrame(self.embeddings.numpy())
         W.index += 1
         return W.T
 

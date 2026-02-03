@@ -1,23 +1,23 @@
 import os
 import networkx as nx
 import numpy as np
-import gensim
+#import gensim
 import sys
 import pathlib
-import argparse
+#import argparse
 import pandas as pd
-import tensorflow
+#import tensorflow
 
-import sklearn
+#import sklearn
 
-from models import BasicModel
+from models.abstract_model import BasicModel
 
-sys.path.clear
-current_dir_path = str(pathlib.Path().resolve())
+#sys.path.clear
+#current_dir_path = str(pathlib.Path().resolve())
 
-sys.path.clear()
-sys.path.insert(0, current_dir_path + "/MELL")
-sys.path.insert(0, current_dir_path)
+#sys.path.clear()
+#sys.path.insert(0, current_dir_path + "/MELL")
+#sys.path.insert(0, current_dir_path)
 
 ###############################################################################################################
 ###################
@@ -76,23 +76,23 @@ class mell(BasicModel):
         
 
         # parameters
-        self.d     = params["emb_size"]
+        self.d     = params.get("emb_size")
         self.k     = 4
         self.lamm  = 10
         self.beta  = 1
         self.gamma = 1
         self.eta   = 0.075
         self.max_iter = 500
-        self.directed = params["directed"]
-        self.dimension = params["emb_size"]
-        self.weighted = params["weighted"]
-        self.dir = "MELL_DATA/" + params["dataset"] +"_"+ str(params["run"])+"_"+ str(params["layer"])
+        self.directed = params.get("directed")
+        self.dimension = params.get("emb_size")
+        self.weighted = params.get("weighted")
+        self.dir = "MELL_DATA/" + params.get("dataset") +"_"+ str(params.get("run"))+"_"+ str(params.get("layer"))
         if not os.path.exists(self.dir):
             os.makedirs(self.dir)
         
         
 
-    def preprocessing(self, dataset, is_training=True):
+    def preprocessing(self, dataset):
         '''
         Preprocessing step, which converts the network of dataframe format into dictionary list.
 
@@ -148,9 +148,9 @@ class mell(BasicModel):
         model = MELL_model(self.L, self.N, self.directed, edges, self.d, self.k, self.lamm, self.beta, self.gamma, self.eta)
         model.train(self.max_iter)
         #model.save_embedding(self.dir)
-        VH = model.resVH
-        VT = model.resVT
-        R = model.resR
+        self.VH = model.resVH
+        self.VT = model.resVT
+        self.R = model.resR
         
         
                  
@@ -164,16 +164,19 @@ class mell(BasicModel):
             reformats the computed embeddings to dataframe where each column represents the embedding vector on one node.
 
         """
+
         W = pd.DataFrame(self.embs, index=self.nodes)
         W.index += 1
         return W.T
+    
+if __name__ == "__main__":
 
-data = pd.read_csv("Datasets\Vickers\Vickers-Chan-7thGraders_multiplex.txt", sep=" ", header=None)
+    data = pd.read_csv("Datasets\Vickers\Vickers-Chan-7thGraders_multiplex.txt", sep=" ", header=None)
 
-model = mell({"weighted": False, "directed": True, "emb_size": 16, "dataset": "Vickers", "run": 1, "layer":1})
+    model = mell({"weighted": False, "directed": True, "emb_size": 16, "dataset": "Vickers", "run": 1, "layer":1})
 
-model.fit(data)
+    model.fit(data)
 
-print(model.model_return())
+    print(model.model_return())
 
-#print("fin")
+    #print("fin")

@@ -1,29 +1,29 @@
 import torch
-import torch.nn as nn
+#import torch.nn as nn
 from torch.autograd import Variable
 import os
 import networkx as nx
 import numpy as np
 import random
 import gc
-import time
-from sklearn import preprocessing
-from collections import OrderedDict
-import pickle
-import sys
-import pathlib
+#import time
+#from sklearn import preprocessing
+#from collections import OrderedDict
+#import pickle
+#import sys
+#import pathlib
 import argparse
-import seaborn as sns
+#import seaborn as sns
 import pandas as pd
 
-from models import BasicModel
+from models.abstract_model import BasicModel
 
-sys.path.clear
-current_dir_path = str(pathlib.Path().resolve())
+#sys.path.clear
+#current_dir_path = str(pathlib.Path().resolve())
 
-sys.path.clear()
-sys.path.insert(0, current_dir_path + "/RMNE")
-sys.path.insert(0, current_dir_path)
+#sys.path.clear()
+#sys.path.insert(0, current_dir_path + "/RMNE")
+#sys.path.insert(0, current_dir_path)
 
 ###############################################################################################################
 ###################
@@ -41,9 +41,9 @@ from RMNE.generate_roles import add_one_node
 """
 Comment on the model:
 The RMNE model is not implemented for directed networks, hence it will
-only consider the underlying undirected network and in case of weiighted 
-directed networks the maximum of the weights is usedas the undirected 
-edge weight. The orignal could did not allow for more than 3 layers, hence
+only consider the underlying undirected network and in case of weighted 
+directed networks the maximum of the weights is used as the undirected 
+edge weight. The original model did not allow for more than 3 layers, hence
 we needed to rewrite the function construct_role_pairs. Additionally, the function
 get_parser was modified to directly return the default values.
 """
@@ -208,30 +208,30 @@ class rmne(BasicModel):
         self.args = parameter_parser()
         self.params = get_parser()
         
-        self.params.dimensions = params["emb_size"]
-        if params["weighted"]:
+        self.params.dimensions = params.get("emb_size")
+        if params.get("weighted"):
             self.params.weighted = True
             self.params.unweighted = False
         else:
             self.params.weighted = False
             self.params.unweighted = True
         
-        if params["directed"]:
+        if params.get("directed"):
             self.params.directed = True
             self.params.undirected = False
         else:
             self.params.directed = False
             self.params.undirected = True
         
-        self.params.dataset = params["dataset"]
+        self.params.dataset = params.get("dataset")
         
-        self.newpath = r'./output/pairs/' + params["dataset"] + "_" + str(params["seed"])
+        self.newpath = r'./output/pairs/' + params.get("dataset") + "_" + str(params.get("seed"))
         if not os.path.exists(self.newpath):
             os.makedirs(self.newpath)
         
         
 
-    def preprocessing(self, dataset, is_training=True):
+    def preprocessing(self, dataset):
         '''
         Preprocessing step, which converts the network of dataframe format into dictionary list.
 
@@ -249,7 +249,7 @@ class rmne(BasicModel):
         self.layers = list(dataset[0].unique())
         self.params.nviews = len(self.layers)
         
-        #because the rmne produce an embedding vector for each layer and concatenates them for the final embedding
+        #because the rmne produces an embedding vector for each layer and concatenates them for the final embedding
         self.params.dimensions = self.params.dimensions//self.params.nviews
         
         dataset[1] -= 1
