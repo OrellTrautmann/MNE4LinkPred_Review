@@ -194,17 +194,6 @@ class rmne(BasicModel):
         super(rmne, self).__init__()
         self.name = "RMNE"
         
-        # set default values:
-        """
-        self.args = dict(min_count=1, features="motif_tri", labeling_iterations=2,\
-                         log_base=1.5, graphlet_size=3, quantiles=5, motif_compression="string",\
-                             factors=8, clusters=50, beta=0.01, num_iters=2)
-        
-        self.params = dict(read_pair=True, input_graphs=r'./data/networks/', input_pairs=r'./data/pairs/', output=r'./output/emb/',\
-                           output_pairs=r'./output/pairs/', dataset='LinkedIn/', nviews=3, dimensions=42, alpha=1, beta=1, gamma=0.5,\
-                               walk_length=10, num_walks=5, window_size=3, p=1, q=1, weighted=False, unweighted=True, directed=False,\
-                                   undirected=True, learning_rate=0.001, negative_sampling=10, batch_size=256, epochs=10, cuda=False)
-        """
         self.args = parameter_parser()
         self.params = get_parser()
         
@@ -231,7 +220,7 @@ class rmne(BasicModel):
         
         
 
-    def preprocessing(self, dataset):
+    def _preprocessing(self, dataset):
         '''
         Preprocessing step, which converts the network of dataframe format into dictionary list.
 
@@ -270,7 +259,7 @@ class rmne(BasicModel):
             self.missing_nodes.append(missing_nodes)
         return data
     
-    def model_fit(self, data):
+    def _model_fit(self, data):
         """
         Constructs network embedding from network data in form on dict list
         
@@ -396,7 +385,7 @@ class rmne(BasicModel):
         """
         W = pd.DataFrame(self.embs)
         W.index += 1
-        return W.T
+        return W.T, W.T
 
 
 

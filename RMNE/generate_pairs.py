@@ -1,4 +1,4 @@
-import node2vec
+from . import node2vec ### changed
 import time
 import random
 import numpy as np

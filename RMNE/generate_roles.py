@@ -5,8 +5,8 @@
 import argparse
 import math
 import networkx as nx
-from motif_count import MotifCounterMachine
-from weisfeiler_lehman_labeling import WeisfeilerLehmanMachine
+from .motif_count import MotifCounterMachine
+from .weisfeiler_lehman_labeling import WeisfeilerLehmanMachine
 import os
 import seaborn as sns
 import matplotlib.pyplot as plt

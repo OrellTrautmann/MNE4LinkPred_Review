@@ -100,28 +100,28 @@ class MELL_model:
         with self.graph.as_default():
 
             self.constPos = tf.constant(posEdges, dtype=tf.int32)
-            self.placeNeg = tf.placeholder(tf.int32, shape=[None, 3])
+            self.placeNeg = tf.compat.v1.placeholder(tf.int32, shape=[None, 3]) ### changed
 
             # Embedding for nodes(entities)
 
             # Vector as Head
-            self.VH = tf.Variable(tf.random_uniform([L, N, d], -1.0, 1.0),dtype=tf.float32)
+            self.VH = tf.Variable(tf.compat.v1.random_uniform([L, N, d], -1.0, 1.0),dtype=tf.float32) ### changed
 
             # Vector as Tail
             if self.directed:
                 self.VT = self.VH
             else:
-                self.VT = tf.Variable(tf.random_uniform([L, N, d], -1.0, 1.0),dtype=tf.float32)
+                self.VT = tf.Variable(tf.compat.v1.random_uniform([L, N, d], -1.0, 1.0),dtype=tf.float32) ###changed
 
             # Embedding for Relation
-            self.R = tf.Variable(tf.random_uniform([L, d], -1.0, 1.0),dtype=tf.float32)
+            self.R = tf.Variable(tf.compat.v1.random_uniform([L, d], -1.0, 1.0),dtype=tf.float32) ### changed
 
             self.loss = loss(self.VH, self.VT, self.R, self.lamm, self.constPos, self.placeNeg,self.beta, self.gamma)
-            self.optimizer = tf.train.AdamOptimizer(learning_rate=self.eta, beta1=0.9, beta2=0.999, epsilon=1e-8).minimize(self.loss)
+            self.optimizer = tf.compat.v1.train.AdamOptimizer(learning_rate=self.eta, beta1=0.9, beta2=0.999, epsilon=1e-8).minimize(self.loss) ### changed
 
-            init = tf.global_variables_initializer()
+            init = tf.compat.v1.global_variables_initializer() ### changed
 
-            self.sess = tf.Session()
+            self.sess = tf.compat.v1.Session() ### changed
             self.sess.run(init)
 
     def train(self, max_iteration):
@@ -207,7 +207,7 @@ def embeddingCost_neg(VH,VT, D, negEdges):
     T1 = T
 
     def log1_P(v):
-        return -v - tf.log(1 + tf.exp(-v))
+        return -v - tf.compat.v1.log(1 + tf.exp(-v)) ### changed
 
     return - tf.reduce_sum(log1_P(tf.reduce_sum(H1 * T1, axis=1)))
 
@@ -225,7 +225,7 @@ def embeddingCost_pos(VH,VT, D, posEdges):
     H1 = H + R
     T1 = T
     def logP(x):
-        return -tf.log(1 + tf.exp(-x))
+        return -tf.compat.v1.log(1 + tf.exp(-x)) ### changed
     return - tf.reduce_sum(logP(tf.reduce_sum(H1 * T1, axis=1)))
 
 def loss(VH, VT, D, lamm, posEdges, negEdges,beta,gamma):
@@ -289,8 +289,7 @@ def getSample(data, sample_size):
     elif whole < sample_size:
         sample1 = getSample(data,whole)
         sample2 = getSample(data,sample_size - whole)
-        print(type(sample1))
-        return sample1 + sample2
+        return np.concatenate([sample1, sample2]) ### changed
     permutation = np.random.permutation(whole)
     permutation = permutation[0:sample_size]
     sampled = np.array(data)[permutation]

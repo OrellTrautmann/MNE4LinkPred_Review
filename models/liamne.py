@@ -192,5 +192,5 @@ class liamne(BasicModel):
         """
         W = pd.DataFrame(self.embeddings.numpy())
         W.index += 1
-        return W.T
+        return W.T, W.T
 

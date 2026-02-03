@@ -1,30 +1,14 @@
-import os
-import networkx as nx
 import numpy as np
-#import gensim
-import sys
-import pathlib
-#import argparse
 import pandas as pd
-#import tensorflow
-
-#import sklearn
 
 from models.abstract_model import BasicModel
-
-#sys.path.clear
-#current_dir_path = str(pathlib.Path().resolve())
-
-#sys.path.clear()
-#sys.path.insert(0, current_dir_path + "/MELL")
-#sys.path.insert(0, current_dir_path)
 
 ###############################################################################################################
 ###################
 #  MELL           #
 ###################
 
-from MELL.MELL import MELL_model
+from MELL.MELL.MELL import MELL_model
 
 """
 Comment on the model:
@@ -86,13 +70,10 @@ class mell(BasicModel):
         self.directed = params.get("directed")
         self.dimension = params.get("emb_size")
         self.weighted = params.get("weighted")
-        self.dir = "MELL_DATA/" + params.get("dataset") +"_"+ str(params.get("run"))+"_"+ str(params.get("layer"))
-        if not os.path.exists(self.dir):
-            os.makedirs(self.dir)
-        
+        self.target_layer = params.get("target_layer")
         
 
-    def preprocessing(self, dataset):
+    def _preprocessing(self, dataset):
         '''
         Preprocessing step, which converts the network of dataframe format into dictionary list.
 
@@ -128,7 +109,7 @@ class mell(BasicModel):
         
         return edges
     
-    def model_fit(self, edges):
+    def _model_fit(self, edges):
         """
         Constructs network embedding from network data in form on dict list
         
@@ -147,13 +128,9 @@ class mell(BasicModel):
         
         model = MELL_model(self.L, self.N, self.directed, edges, self.d, self.k, self.lamm, self.beta, self.gamma, self.eta)
         model.train(self.max_iter)
-        #model.save_embedding(self.dir)
         self.VH = model.resVH
         self.VT = model.resVT
         self.R = model.resR
-        
-        
-                 
     
     def model_return(self):
         """
@@ -164,19 +141,11 @@ class mell(BasicModel):
             reformats the computed embeddings to dataframe where each column represents the embedding vector on one node.
 
         """
-
-        W = pd.DataFrame(self.embs, index=self.nodes)
-        W.index += 1
-        return W.T
+        R = np.reshape(self.R,(3,1,16))
+        R = np.tile(R, (1,29,1))
+        S = pd.DataFrame(np.squeeze((R + self.VH)[self.target_layer,:,:]))
+        S.index += 1
+        T = pd.DataFrame(np.squeeze(self.VT[self.target_layer,:,:]))
+        T.index += 1
+        return S.T, T.T
     
-if __name__ == "__main__":
-
-    data = pd.read_csv("Datasets\Vickers\Vickers-Chan-7thGraders_multiplex.txt", sep=" ", header=None)
-
-    model = mell({"weighted": False, "directed": True, "emb_size": 16, "dataset": "Vickers", "run": 1, "layer":1})
-
-    model.fit(data)
-
-    print(model.model_return())
-
-    #print("fin")

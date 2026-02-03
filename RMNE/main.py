@@ -9,16 +9,16 @@ from torch.autograd import Variable
 import os
 import networkx as nx
 import numpy as np
-import generate_pairs
+from . import generate_pairs ### changed
 import random
 import gc
 import time
 from sklearn import preprocessing
-from args_parser import get_parser
+from .args_parser import get_parser
 from collections import OrderedDict
-import generate_roles
+from . import generate_roles ### changed
 import pickle
-from utils import *
+from .utils import * ### changed
 
 def parameter_parser():
     """
