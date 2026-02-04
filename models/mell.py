@@ -87,7 +87,7 @@ class mell(BasicModel):
 
         Returns
         ----------
-        train_data : dictionary of lists of nodes ordered by layer.
+        edges : dictionary of lists of nodes ordered by layer.
         '''
         dataset = sorted(dataset, key=lambda x: x[0])
         self.L = dataset[-1][0]

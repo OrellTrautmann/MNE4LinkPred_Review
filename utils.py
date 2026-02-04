@@ -7,6 +7,7 @@ import pandas as pd
 from sklearn.metrics import precision_score, roc_auc_score
 from sampling_prob_simulation import uniform_neg_sampling, degree_neg_sampling
 import networkx as nx
+import itertools
    
 def neg_sampling(edgetuple_list: list, node_list: list, sample_size: int, seed: int = 0, sampling_method: str = 'uniform'):
     if sampling_method == 'uniform':
@@ -15,7 +16,7 @@ def neg_sampling(edgetuple_list: list, node_list: list, sample_size: int, seed: 
         neg_samples = degree_neg_sampling(edgetuple_list, node_list, sample_size)
     else:
         return ValueError('Can only implement \'uniform\' or \'degree\'')
-    return edgetuple_list + neg_samples, ([1] * len(edgetuple_list)) + ([0] * len(neg_samples))
+    return neg_samples
 
 def split_dataset(edgetuple_list: list, split=[.7, .1, .2]):
     graph = nx.Graph(edgetuple_list) # is undirected
@@ -32,10 +33,59 @@ def split_dataset(edgetuple_list: list, split=[.7, .1, .2]):
 
     return train_edge_list, val_edge_list, test_edge_list
 
+def split_target_auxiliary_layers(edgetuple_list: list, target_layer: int):
+    target_layer_edge_list = list()
+    aux_layers_edge_list = list()
+    for edge in edgetuple_list:
+        if edge[0] == target_layer:
+            target_layer_edge_list.append(edge)
+        else:
+            aux_layers_edge_list.append(edge)
+    return target_layer_edge_list, aux_layers_edge_list
+
+def remove_edge_info(edgetuple_list: list):
+    return [(edge[1], edge[2]) for edge in edgetuple_list]
+
+def add_edge_info(edgetuple_list: list, target_layer: int, weight: int = 1):
+    return [(target_layer, edge[0], edge[1], weight) for edge in edgetuple_list]
+
+def get_node_list(edgetuple_list: list):
+    reduced_edgetuples = [(edge[1], edge[2]) for edge in edgetuple_list]
+    return list(set(itertools.chain.from_iterable(reduced_edgetuples)))
 
 def partial_multiplex(train_edge_list: list, multiplex_aux_edge_list: list, target_layer: int):
     train_edge_list = [(target_layer,) + edge + (1,) for edge in train_edge_list]
     return multiplex_aux_edge_list + train_edge_list
+
+def get_reciprocals(edgetuple_list: list):
+    reciprocals = list()
+    for edge in edgetuple_list:
+        if (edge[0], edge[2], edge[1], edge[3]) in edgetuple_list:
+            continue
+        else:
+            reciprocals.append((edge[0], edge[2], edge[1], edge[3]))
+    return reciprocals
+
+def sample_not_reciprocals(edgetuple_list: list, node_list: list, sample_size: int, seed: int = 0):
+    neg_samples = list()
+    first_edge = edgetuple_list[0]
+
+    for _ in range(sample_size):
+        edge = (first_edge[0], np.random.randint(1,max(node_list)+1), np.random.randint(1,max(node_list)+1), 1)
+        reciprocal_edge = (edge[0], edge[2], edge[1], edge[3])
+        while edge in edgetuple_list or reciprocal_edge in edgetuple_list:
+            edge = (first_edge[0], np.random.randint(1,max(node_list)+1), np.random.randint(1,max(node_list)+1), 1)
+            reciprocal_edge = (edge[0], edge[2], edge[1], edge[3])
+        
+        neg_samples.append(edge)
+    return neg_samples
+
+def find_reciprocals(edgetuple_list: list, neg_edgetuple_list: list):
+    count = 0
+    for (source, target) in neg_edgetuple_list:
+        if (target, source) in edgetuple_list:
+            count += 1
+    return count
 
 def scores(y_true: list, y_pred: list): 
     score_dict = dict()
@@ -81,5 +131,5 @@ def seed_everything(seed):
     #torch.use_deterministic_algorithms(True)
 
 def sigmoid_predictor(source_emb: np.array, target_emb: np.array, edgetuple_list):
-        print(source_emb[:,0].shape)
+        print(source_emb[:,0])
         return [np.round(1 / (1 + np.exp(-np.dot(source_emb[:,edge[0]-1], target_emb[:,edge[1]-1])))) for edge in edgetuple_list]

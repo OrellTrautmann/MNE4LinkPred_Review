@@ -6,7 +6,10 @@ import networkx
 # import libraries
 from multiprocessing import cpu_count
 from joblib import Parallel, delayed, parallel_backend
-from utils import parse_args, neg_sampling, seed_everything, split_dataset, partial_multiplex, scores, sigmoid_predictor
+from utils import (parse_args, neg_sampling, seed_everything, 
+                   split_dataset, partial_multiplex, scores, sigmoid_predictor,
+                   get_node_list, remove_edge_info, split_target_auxiliary_layers,
+                   add_edge_info, get_reciprocals, sample_not_reciprocals, find_reciprocals)
 import json
 import os
 from time import time
@@ -28,184 +31,92 @@ from models.mell import mell
 from models.liamne import liamne
 from models.rmne import rmne
 
-model_dict = {"liamne": liamne, "rmne": rmne, "mell": mell}
+EMB_SIZE = 16
 
-"""
-def model_pipeline(data_path, train, val, test, train_network_path, layers: list, target_layer: int, dim: int, weighted: bool, directed: bool, data_name: str, model_name: str, nodes: list, run: int, seed=0):
-    #### assertions ########
-    assert (isinstance(train, list))
-    assert (isinstance(test, list))
-    assert (isinstance(val, list))
-    # assert(model_name in model_dict.keys())
-    assert (dim > 0)
-    assert (len(nodes) > 0)
-    assert (seed >= 0)
-    ########################
-    # load datas
-    data = pd.read_csv(data_path, sep=" ", header=None)
-    train_network = pd.read_csv(train_network_path, sep=" ", header=None)
-    print(train_network)
-    # generate seeds
+def undirected_test_procedure(model_dict, edgetuple_list: list, target_layer: int, sampling_method: str = "uniform", seed = 1234):
     seed_everything(seed)
-    seeds = np.random.choice(int(1e5), size=2)
+    node_list = get_node_list(edgetuple_list)
+    target_edgetuple_list, aux_edgetuple_list = split_target_auxiliary_layers(edgetuple_list, target_layer)
+    train_edge_list, val_edge_list, test_edge_list = split_dataset(remove_edge_info(target_edgetuple_list), split=[.8, .0, .2])
+    train_network_edgelist = partial_multiplex(train_edge_list, aux_edgetuple_list, target_layer)
+    neg_samples = neg_sampling(train_edge_list + val_edge_list + test_edge_list, node_list, len(test_edge_list), sampling_method=sampling_method)
+    test_samples = add_edge_info(test_edge_list, target_layer, 1) + add_edge_info(neg_samples, target_layer, 0)
+    random.shuffle(test_samples)
+    true_values = [edge[3] for edge in test_samples]
 
-    ###### Embedding #######
-    emb_object = model_dict[model_name]({"node_num": len(nodes), "layer_num": len(
-        layers), "emb_size": dim, "target_layer": target_layer, "weighted": weighted, "directed": directed, "dataset": data_name, "run": run, "seed": seeds[0]})
-    start_time = time()
-    emb_object.fit(train_network)
-    run_time = time() - start_time
-    embeddings = emb_object.model_return()
-    ########################
+    print(f"Number of negative samples: {len(neg_samples)}, number of reciprocals: {find_reciprocals(remove_edge_info(target_edgetuple_list), neg_samples)}, layer density: {len(target_edgetuple_list)/(len(node_list) * (len(node_list) - 1))}")
 
-    ###### Prediction ######
-    X_input = reg_clf_input(data[[1, 2]], embeddings).sort_index()
+    for model_name in model_dict:
+        emb_object = model_dict[model_name]({"weighted": False, "directed": True, "emb_size": EMB_SIZE, "node_num": len(node_list), 
+                                             "layer_num": 3, "dataset": "Name", "run": 1, "target_layer":1})
+        
+        emb_object.fit(train_network_edgelist)
 
-    y_input = data[[3]].sort_index()
+        source_emb, target_emb = emb_object.model_return()
 
-    
-    ########################
+        predictions = sigmoid_predictor(source_emb.to_numpy(), target_emb.to_numpy(), test_samples)
+        results = scores(true_values, predictions)
 
-    return {"results": scores(np.array(y_input.loc[test]), np.array(y_pred), weighted=weighted), "run time": run_time}
+        print(results)
 
-
-def aux_pipeline(data_path: str, layers: list, layer: int, dim: int, weighted: bool, directed: bool, dataset_name: str, nodes: list, run: int, model_name: str, seed: int):
-    
-    ###### assertions #####
-    assert (dim > 0)
-    assert (run >= 0)
-    assert (layer >= 1)
-    assert (seed >= 0)
-    #######################
-
-    # generate seeds
+def directed_test_procedure(model_dict, edgetuple_list: list, target_layer: int, seed = 1234):
     seed_everything(seed)
-    seeds = list(np.random.choice(int(1e5), 2))
 
-    ##### Dataset split ####
-    train, val, test = split_dataset_indices(data_path, layer, seeds[0])
-    data = pd.read_csv(data_path, sep=" ", header=None)
-    
-    train_network_path = partial_multiplex(train, layer, data_path, model_name, layer, run, dataset_name)
-    ########################
+    node_list = get_node_list(edgetuple_list)
+    target_edgetuple_list, aux_edgetuple_list = split_target_auxiliary_layers(edgetuple_list, target_layer)
+    train_edge_list, val_edge_list, test_edge_list = split_dataset(remove_edge_info(target_edgetuple_list), split=[.8, .0, .2])
+    train_network_edgelist = partial_multiplex(train_edge_list, aux_edgetuple_list, target_layer)
+    reciprocal_samples = get_reciprocals(edgetuple_list)
+    not_reciprocal_samples = sample_not_reciprocals(edgetuple_list, node_list, len(test_edge_list))
+    test_recip_samples = add_edge_info(test_edge_list, target_layer, 1) + add_edge_info(reciprocal_samples, target_layer, 0)
+    test_not_recip_samples = add_edge_info(test_edge_list, target_layer, 1) + add_edge_info(not_reciprocal_samples, target_layer, 0)
+    random.shuffle(test_recip_samples)
+    true_recip_values = [edge[3] for edge in test_recip_samples]
 
-    results = {f"{model_name}_{layer}_{run}": model_pipeline(data_path, train, val, test, train_network_path, layers, layer, dim, weighted, directed, dataset_name, model_name, nodes, run, seed=seeds[1])}
+    print(f"Number of reciprocal samples: {len(reciprocal_samples)}, number of reciprocals: {find_reciprocals(remove_edge_info(target_edgetuple_list), remove_edge_info(reciprocal_samples))}, layer density: {len(target_edgetuple_list)/(len(node_list) * (len(node_list) - 1))}")
 
-    return results
-    
+    for model_name in model_dict:
+        emb_object = model_dict[model_name]({"weighted": False, "directed": True, "emb_size": EMB_SIZE, "node_num": len(node_list), 
+                                             "layer_num": 3, "dataset": "Name", "run": 1, "target_layer":1})
+        
+        emb_object.fit(train_network_edgelist)
 
-def run_pipeline(model_name: str, file_path: str, dim: int, weighted: bool, directed: bool, runs: int, layer: int, outdir: str, njobs: int):
-    ##### assertions ########
-    assert (dim > 0)
-    assert (runs > 0)
-    assert (njobs >= 1)
-    #########################
+        source_emb, target_emb = emb_object.model_return()
 
-    file_name = file_path.split('/')[-1]
-    writepath = outdir + f"/{model_name}_{layer}_{file_name.split('.')[0]}"
+        predictions = sigmoid_predictor(source_emb.to_numpy(), target_emb.to_numpy(), test_recip_samples)
+        results = scores(true_recip_values, predictions)
 
-    if not os.path.exists(outdir):
-        os.makedirs(outdir)
+        print(results)
 
-    data = pd.read_csv(file_path, sep=" ", header=None)
-    layers = list(data[0].unique())
-    nodes = list(set(data[1]).union(set(data[2])))
+    random.shuffle(test_not_recip_samples)
+    true_not_recip_values = [edge[3] for edge in test_not_recip_samples]
 
-    # generate random seeds
-    seed_everything(1234)
-    seeds = list(np.random.choice(int(1e5), size=runs+len(layers)))
+    print(f"Number of non reciprocal samples: {len(not_reciprocal_samples)}, number of reciprocals: {find_reciprocals(remove_edge_info(target_edgetuple_list), remove_edge_info(not_reciprocal_samples))}, layer density: {len(target_edgetuple_list)/(len(node_list) * (len(node_list) - 1))}")
 
-    # use negative sampling
-    layer_sample_lst = [neg_sampling(data[data[0] == target_layer], target_layer, seeds[target_layer-1], directed=directed) for target_layer in layers]
-    data = pd.concat(layer_sample_lst, axis=0, ignore_index=True)
-    print("negsampl")
-    if not os.path.exists("NegSampledDataSet/"):
-        os.makedirs("NegSampledDataSet/")
+    for model_name in model_dict:
+        emb_object = model_dict[model_name]({"weighted": False, "directed": True, "emb_size": EMB_SIZE, "node_num": len(node_list), 
+                                             "layer_num": 3, "dataset": "Name", "run": 1, "target_layer":1})
 
-    data_path = "NegSampledDataSet/" + \
-        f"{file_name}_{model_name}_{layer}_{file_name.split('.')[0]}.csv"
-    
-    data.to_csv(data_path, sep=" ", header=False, index=False)
-    
-    run_seed_list = enumerate(seeds[len(layers):])
-    assert (len(seeds[len(layers):]) == runs)
+        predictions = sigmoid_predictor(source_emb.to_numpy(), target_emb.to_numpy(), test_not_recip_samples)
+        results = scores(true_not_recip_values, predictions)
 
-    if (njobs == 1) or (runs == 1):
+        print(results)
 
-        for run, seed in run_seed_list:
-            # run through each layer as a target layer and take the average performance
-            results = aux_pipeline(data_path, layers, layer, dim, weighted,
-                                   directed, file_name, nodes, run+1, model_name, seed)
 
-            with open(writepath + f"_seed={seed}_run={run}.txt", 'w') as f:
-                f.write(json.dumps(results))
 
-    else:
-        def parallel_work(data_path, layers, layer, dim, weighted, directed, file_name, nodes, run, model_name, seed, writepath):
-            print("work")
-            results = aux_pipeline(data_path, layers, layer, dim, weighted,directed, file_name, nodes, run, model_name, seed)
-            
-            with open(writepath  + f"_seed={seed}_run={run}.txt", 'w') as f:
-                f.write(json.dumps(results))
 
-        with parallel_backend('threading', n_jobs=njobs):
-            print("para")
-            Parallel()(delayed(parallel_work)(data_path, layers, layer, dim, weighted, directed, file_name, nodes, run+1, model_name, seed, writepath) for run, seed in run_seed_list)
 
-    print("x")
 
 
 if __name__ == "__main__":
-
-
-    # Datafiles for form: (file path, embedding dimenstion, is weighted, is directed)
-    real_world_files = [
-        ("Datasets/Vickers/Vickers-Chan-7thGraders_multiplex.txt", 16, False, True), #check
-        #("Datasets/Twitter/Twitter.csv", 128, True, True),
-        #("Datasets/SacchCere/sacchcere_genetic_multiplex.edges.txt", 64, False, True), 
-        #("Datasets/Leukemia/Leukemia MP 1.csv", 128, False, False), 
-        #("Datasets/Drug/DrugMultiplex.csv", 64, True, False), 
-        ("Datasets/CKM/CKM-Physicians-Innovation_multiplex.txt", 16, False, True) #check
-        ]
-
-    if cpu_count() > 2:
-        njobs = cpu_count() - 2
-    else:
-        njobs = 1
-
-    print("njobs: %d" % njobs)
-
-    args = parse_args()
-    print("args")
-    if not args.model in model_dict:
-
-        spec = importlib.util.spec_from_file_location(
-            args.model, args.modelpath)
-        foo = importlib.util.module_from_spec(spec)
-        sys.modules[args.model] = foo
-        spec.loader.exec_module(foo)
-
-        model_dict.update({args.model: foo.MyModelClass})
-
-        run_pipeline(args.model, args.inpath, args.dim, bool(args.weighted), bool(
-            args.directed), args.runs, args.layer, args.outdir, njobs)
-
-    run_pipeline(args.model, args.inpath, args.dim, bool(args.weighted), bool(
-        args.directed), args.runs, args.layer, args.outdir, njobs)
-"""
-
-if __name__ == "__main__":
+    model_dict = {"liamne": liamne, "rmne": rmne, "mell": mell}
 
     dataframe = pd.read_csv("Vickers-Chan-7thGraders_multiplex.txt", sep=" ", header=None)
 
     data = list(dataframe.itertuples(index=False, name=None))
 
-    model = mell({"weighted": False, "directed": True, "emb_size": 16, "node_num": 29, "layer_num": 3, "dataset": "Vickers", "run": 1, "target_layer":1})
+    #undirected_test_procedure(model_dict, data, target_layer=1, sampling_method="uniform")
 
-    model.fit(data)
-
-    S, T = model.model_return()
-
-    print(sigmoid_predictor(S.to_numpy(), T.to_numpy(), data))
+    directed_test_procedure(model_dict, data, target_layer=1)
 
     print("fin")
