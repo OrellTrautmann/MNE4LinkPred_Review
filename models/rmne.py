@@ -7,6 +7,7 @@ import random
 import gc
 import argparse
 import pandas as pd
+import itertools
 
 from models.abstract_model import BasicModel
 
@@ -205,7 +206,7 @@ class rmne(BasicModel):
         
         
 
-    def _preprocessing(self, dataset):
+    def _preprocessing(self, dataset: list):
         '''
         Preprocessing step, which converts the network of dataframe format into dictionary list.
 
@@ -220,28 +221,36 @@ class rmne(BasicModel):
         ----------
         train_data : dictionary of lists of nodes ordered by layer.
         '''
-        self.layers = list(dataset[0].unique())
-        self.params.nviews = len(self.layers)
+        dataset = sorted(dataset, key=lambda x: x[0])
+        self.layers = dataset[-1][0]
+        self.params.nviews = self.layers
         
         #because the rmne produces an embedding vector for each layer and concatenates them for the final embedding
         self.params.dimensions = self.params.dimensions//self.params.nviews
         
-        dataset[1] -= 1
-        dataset[2] -= 1
+        def renumerate_node(x: tuple): # needs more nodes than layers
+            return (x[0], x[1]-1, x[2]-1) 
+
+        dataset = list(map(renumerate_node, dataset))
         
-        nodes = list(set(dataset[1]).union(set(dataset[2])))
-        
-        data = []
-        self.missing_nodes = []
-        for layer in self.layers:
-            data1 = dataset[dataset[0] == layer]
-            df = pd.crosstab(data1[1], data1[2], data1[3], aggfunc='max')
-            idx = df.columns.union(df.index)
-            df = df.reindex(index = idx, columns=idx).fillna(0)
-            data.append(df)
-            layer_nodes = list(set(data1[1]).union(set(data1[2])))
+        data = list()
+        self.missing_nodes = list()
+        for layer in range(1, 1+ self.layers):
+            layer_data = list()
+            for edge in dataset:
+                if edge[0] == layer:
+                    layer_data.append((edge[1], edge[2]))
+            data.append(layer_data)
+
+        all_edges = list(itertools.chain(layer_data))
+
+        nodes = list(set(itertools.chain.from_iterable(all_edges)))
+
+        for layer in range(1, 1+ self.layers):
+            layer_nodes = list(set(itertools.chain.from_iterable(layer_data)))
             missing_nodes = list(set(nodes).difference(set(layer_nodes)))
             self.missing_nodes.append(missing_nodes)
+
         return data
     
     def _model_fit(self, data):
@@ -270,7 +279,7 @@ class rmne(BasicModel):
         
         G = []
         for i in range(self.params.nviews):
-            Graph = nx.from_pandas_adjacency(data[i])
+            Graph = nx.from_edgelist(data[i]) ### changed to read edgelist instead of pandas adj
             Graph.add_nodes_from(self.missing_nodes[i])
             G.append(Graph)
             #print(111, sorted(G[-1].nodes), len(G[-1].nodes))

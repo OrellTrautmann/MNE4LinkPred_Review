@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import itertools
 
 from models.abstract_model import BasicModel
 
@@ -88,8 +89,9 @@ class mell(BasicModel):
         ----------
         train_data : dictionary of lists of nodes ordered by layer.
         '''
-        self.L = len(list(dataset[0].unique()))
-        nodes = list(set(dataset[1]).union(set(dataset[2])))
+        dataset = sorted(dataset, key=lambda x: x[0])
+        self.L = dataset[-1][0]
+        nodes = list(set(itertools.chain.from_iterable(dataset)))
         self.N = len(nodes)
         
         #node-index dict
@@ -98,13 +100,7 @@ class mell(BasicModel):
         def mymap(x):
             return self.node2idx.get(x)
         
-        dataset[0] -= 1
-        dataset[1] = dataset[1].map(mymap)
-        dataset[2] = dataset[2].map(mymap)
-        
-        if self.weighted:
-            dataset[3] = 1
-        edges = dataset.values.tolist()
+        edges = [[edge[0]-1, mymap(edge[1]), mymap(edge[2]), 1] for edge in dataset]
         self.M = len(edges)
         
         return edges
@@ -141,11 +137,11 @@ class mell(BasicModel):
             reformats the computed embeddings to dataframe where each column represents the embedding vector on one node.
 
         """
-        R = np.reshape(self.R,(3,1,16))
-        R = np.tile(R, (1,29,1))
-        S = pd.DataFrame(np.squeeze((R + self.VH)[self.target_layer,:,:]))
-        S.index += 1
-        T = pd.DataFrame(np.squeeze(self.VT[self.target_layer,:,:]))
-        T.index += 1
-        return S.T, T.T
+        layer_repr_R = np.reshape(self.R,(3,1,16))
+        layer_repr_R = np.tile(layer_repr_R, (1,29,1))
+        source_emb = pd.DataFrame(np.squeeze((layer_repr_R + self.VH)[self.target_layer-1,:,:]))
+        source_emb.index += 1
+        target_emb = pd.DataFrame(np.squeeze(self.VT[self.target_layer-1,:,:]))
+        target_emb.index += 1
+        return source_emb.T, target_emb.T
     

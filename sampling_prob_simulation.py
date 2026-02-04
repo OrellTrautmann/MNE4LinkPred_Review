@@ -4,9 +4,6 @@ import seaborn as sn
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 
-SEED = 1234
-GRAPH_SIZE = 1000
-
 # number of sampled reciprocal edges simulation using uniform sampling procedure
 
 def uniform_neg_sampling(edgetuple_list: list, node_list: list, sample_size: int):
@@ -129,8 +126,9 @@ def plot_ExpectionsVSSampled(neg_ratio: float, graph_size: int, seed: int):
     fig.savefig("neg_sampling_plot.png")
 
 if __name__ == "__main__":
-
+    SEED = 1234
+    GRAPH_SIZE = 1000
+    print("fin")
     #plot_ExpectionsVSSampled(neg_ratio = .2, graph_size=GRAPH_SIZE, seed=SEED)
     
     
-

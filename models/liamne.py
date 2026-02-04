@@ -76,15 +76,10 @@ class liamne(BasicModel):
         ----------
         train_data : dictionary of lists of nodes ordered by layer.
         '''
-        dataset[1] -= 1
-        dataset[2] -= 1
-        node_num = 0
-        data = dataset.to_numpy()
-        data = data[:,:3]
+
         train_data = defaultdict(list)
-        for l, i, j in data:
-            train_data[l-1].append([int(i), int(j), 1])
-            node_num = max(node_num, int(i), int(j))
+        for edge in dataset:
+            train_data[edge[0]-1].append([edge[1]-1, edge[2]-1, 1])
         
         return train_data
     
