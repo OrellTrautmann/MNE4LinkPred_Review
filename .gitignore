@@ -1,6 +1,11 @@
 #network file
 Vickers-Chan-7thGraders_multiplex.txt
 
+# result files
+directed_test_procedure_results.txt
+undirected_test_procedure_results.txt
+
 #folder with intermediate data
 MELL_DATA
 output
+__pycache__

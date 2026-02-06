@@ -3,20 +3,25 @@ import random
 import argparse
 import os
 import torch
-import pandas as pd
-from sklearn.metrics import precision_score, roc_auc_score
-from sampling_prob_simulation import uniform_neg_sampling, degree_neg_sampling
+from sklearn.metrics import (precision_score, 
+                             roc_auc_score, 
+                             accuracy_score, 
+                             average_precision_score)
+
+from sampling_prob_simulation import (uniform_neg_sampling, 
+                                      degree_neg_sampling)
+
 import networkx as nx
 import itertools
    
 def neg_sampling(edgetuple_list: list, node_list: list, sample_size: int, seed: int = 0, sampling_method: str = 'uniform'):
     if sampling_method == 'uniform':
-        neg_samples = uniform_neg_sampling(edgetuple_list, node_list, sample_size)
+        neg_samples = uniform_neg_sampling(remove_edge_info(edgetuple_list), node_list, sample_size)
     elif sampling_method == 'degree':
-        neg_samples = degree_neg_sampling(edgetuple_list, node_list, sample_size)
+        neg_samples = degree_neg_sampling(remove_edge_info(edgetuple_list), node_list, sample_size)
     else:
         return ValueError('Can only implement \'uniform\' or \'degree\'')
-    return neg_samples
+    return add_edge_info(neg_samples, edgetuple_list[0][0], weight=0)
 
 def split_dataset(edgetuple_list: list, split=[.7, .1, .2]):
     graph = nx.Graph(edgetuple_list) # is undirected
@@ -63,7 +68,7 @@ def get_reciprocals(edgetuple_list: list):
         if (edge[0], edge[2], edge[1], edge[3]) in edgetuple_list:
             continue
         else:
-            reciprocals.append((edge[0], edge[2], edge[1], edge[3]))
+            reciprocals.append((edge[0], edge[2], edge[1], 0))
     return reciprocals
 
 def sample_not_reciprocals(edgetuple_list: list, node_list: list, sample_size: int, seed: int = 0):
@@ -87,14 +92,21 @@ def find_reciprocals(edgetuple_list: list, neg_edgetuple_list: list):
             count += 1
     return count
 
+def retrieve_true_edge(neg_samples):
+    return [(edge[2], edge[1]) for edge in neg_samples]
+
 def scores(y_true: list, y_pred: list): 
     score_dict = dict()
     #precision
     pr_scr = precision_score(y_true, y_pred)
     #area under the reciever-operator-curve
     auroc = roc_auc_score(y_true, y_pred)
+    # accuracy
+    acc_scr = accuracy_score(y_true, y_pred)
+    # average precision score
+    ap_scr = average_precision_score(y_true, y_pred, average='macro')
         
-    score_dict.update({'precision' : pr_scr,  'AUROC' : auroc})
+    score_dict.update({'precision' : pr_scr,  'AUROC' : auroc, 'accuracy': acc_scr, 'Avg. prec.': ap_scr})
     return(score_dict)
 
 
