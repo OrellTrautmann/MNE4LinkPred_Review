@@ -12,10 +12,13 @@ from utils import (parse_args,
                    add_edge_info, 
                    get_reciprocals, 
                    sample_not_reciprocals, 
-                   find_reciprocals)
+                   find_reciprocals,
+                   get_num_layers)
 
 import random
+import numpy as np
 from tqdm import tqdm
+import json
 
 
 # import model classes
@@ -24,6 +27,72 @@ from models.liamne import liamne
 from models.rmne import rmne
 
 EMB_SIZE = 16
+
+def undirected_test_procedure(model_dict: dict, 
+                              edgetuple_list: list, 
+                              target_layer: int = 1, 
+                              emb_size: int = 16,  
+                              run: int = 1,
+                              network_name = "Vickers",
+                              sampling_method: str = "uniform", 
+                              seed = 124):
+    
+    # generate reproducible random seeds 
+    seed_everything(seed)
+    seeds = np.random.randint(0, 10**6, 4)
+
+    # construct training network
+    target_edgetuple_list, aux_edgetuple_list = split_target_auxiliary_layers(edgetuple_list, 
+                                                                              target_layer)
+    train_edge_list, val_edge_list, test_edge_list = split_dataset(remove_edge_info(target_edgetuple_list), 
+                                                                   split=[.8, .0, .2])
+    train_network_edgelist = partial_multiplex(train_edge_list, 
+                                               aux_edgetuple_list, 
+                                               target_layer)
+
+    # generate testing set with negative samples
+    node_list = get_node_list(edgetuple_list)
+    neg_samples = neg_sampling(target_edgetuple_list, 
+                               node_list, 
+                               len(test_edge_list), 
+                               sampling_method=sampling_method)
+    test_samples = add_edge_info(test_edge_list, 
+                                 target_layer, 
+                                 weight = 1) 
+    test_samples += neg_samples
+    random.shuffle(test_samples)
+    true_values = [edge[3] for edge in test_samples]
+
+    # initial dict for results to e saved as json file
+    for_json_file = dict(number_negative_samples = len(neg_samples), 
+                         number_reciprocals = find_reciprocals(remove_edge_info(target_edgetuple_list), 
+                                                              remove_edge_info(neg_samples)),
+                         layer_density = len(target_edgetuple_list) / (len(node_list) * (len(node_list) - 1)))
+
+    # iterate test over the models
+    for model_name in tqdm(model_dict):
+        emb_object = model_dict[model_name]({"emb_size": emb_size, 
+                                             "node_num": len(node_list), 
+                                             "layer_num": get_num_layers(edgetuple_list),  
+                                             "target_layer": target_layer,
+                                             "dataset": network_name, 
+                                             "run": run})
+        
+        emb_object.fit(train_network_edgelist)
+        source_emb, target_emb = emb_object.model_return()
+
+        predictions = sigmoid_predictor(source_emb.to_numpy(), 
+                                        target_emb.to_numpy(), 
+                                        remove_edge_info(test_samples))
+        results = scores(true_values, predictions)
+
+        for_json_file.update({f"{model_name}": results})
+
+    # write json file with results
+    with open(f"undirected_test_procedure_results_run{run}_seed{seed}.json", "w", encoding="utf-8") as json_file:
+        json.dump(for_json_file, json_file, ensure_ascii=False, indent=4)
+
+
 
 def un_vs_directed_test_procedure(model_dict, edgetuple_list: list, target_layer: int, sampling_method: str = "uniform", seed = 124):
     seed_everything(seed)
@@ -101,6 +170,11 @@ if __name__ == "__main__":
 
     data = list(dataframe.itertuples(index=False, name=None))
 
-    un_vs_directed_test_procedure(model_dict, data, target_layer=1, sampling_method="uniform")
+    undirected_test_procedure(model_dict, data, target_layer=1, sampling_method="uniform")
+
+    with open(f"undirected_test_procedure_results_run{1}_seed{124}.json", "r", encoding="utf-8") as json_file:
+        data = json.load(json_file)
+
+    print("data", data)
 
     print("fin")

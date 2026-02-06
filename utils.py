@@ -13,6 +13,7 @@ from sampling_prob_simulation import (uniform_neg_sampling,
 
 import networkx as nx
 import itertools
+import json
    
 def neg_sampling(edgetuple_list: list, node_list: list, sample_size: int, seed: int = 0, sampling_method: str = 'uniform'):
     if sampling_method == 'uniform':
@@ -95,8 +96,21 @@ def find_reciprocals(edgetuple_list: list, neg_edgetuple_list: list):
 def retrieve_true_edge(neg_samples):
     return [(edge[2], edge[1]) for edge in neg_samples]
 
+def write_2_json(file_path_name: str, new_data: dict):
+    with open(file_path_name, 'r+') as file:
+        # Load existing data into a dictionary
+        file_data = json.load(file)
+        
+        # Append new data to the 'emp_details' list
+        file_data.append(new_data)
+        
+        # Move the cursor to the beginning of the file
+        file.seek(0)
+        
+        # Write the updated data back to the file
+        json.dump(file_data, file)
+
 def scores(y_true: list, y_pred: list): 
-    score_dict = dict()
     #precision
     pr_scr = precision_score(y_true, y_pred)
     #area under the reciever-operator-curve
@@ -106,8 +120,14 @@ def scores(y_true: list, y_pred: list):
     # average precision score
     ap_scr = average_precision_score(y_true, y_pred, average='macro')
         
-    score_dict.update({'precision' : pr_scr,  'AUROC' : auroc, 'accuracy': acc_scr, 'Avg. prec.': ap_scr})
+    score_dict = dict(precision = pr_scr,
+                      AUROC = auroc,
+                      accuracy = acc_scr,
+                      avg_prec = ap_scr)
     return(score_dict)
+
+def get_num_layers(edgetuple_list: list):
+    return max(list(itertools.chain.from_iterable(edgetuple_list))[::4])
 
 
 def parse_args():

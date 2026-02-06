@@ -1,9 +1,6 @@
-#network file
-Vickers-Chan-7thGraders_multiplex.txt
-
-# result files
-directed_test_procedure_results.txt
-undirected_test_procedure_results.txt
+#file types
+*.json
+*.txt
 
 #folder with intermediate data
 MELL_DATA
