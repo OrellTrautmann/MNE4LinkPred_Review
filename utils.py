@@ -70,7 +70,16 @@ def get_reciprocals(edgetuple_list: list):
             reciprocals.append((edge[0], edge[2], edge[1], 0))
     return reciprocals
 
-def sample_not_reciprocals(edgetuple_list: list, node_list: list, sample_size: int, seed: int = 0):
+def get_reciprocals_sample(edgetuple_list: list, sample_size: int, seed: int = 1234):
+    seed_everything(seed)
+    reciprocals = get_reciprocals(edgetuple_list)
+    if len(reciprocals) > sample_size:
+        return random.sample(reciprocals, sample_size)
+    else:
+        return reciprocals
+                         
+def sample_not_reciprocals(edgetuple_list: list, node_list: list, sample_size: int, seed: int = 1234):
+    seed_everything(seed)
     neg_samples = list()
     first_edge = edgetuple_list[0]
 
