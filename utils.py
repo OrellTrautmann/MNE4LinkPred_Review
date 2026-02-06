@@ -8,23 +8,21 @@ from sklearn.metrics import (precision_score,
                              accuracy_score, 
                              average_precision_score)
 
-from sampling_prob_simulation import (uniform_neg_sampling, 
-                                      degree_neg_sampling)
-
 import networkx as nx
 import itertools
 import json
    
-def neg_sampling(edgetuple_list: list, node_list: list, sample_size: int, seed: int = 0, sampling_method: str = 'uniform'):
+def neg_sampling(edgetuple_list: list, node_list: list, sample_size: int, seed: int = 1234, sampling_method: str = 'uniform'):
     if sampling_method == 'uniform':
-        neg_samples = uniform_neg_sampling(remove_edge_info(edgetuple_list), node_list, sample_size)
+        neg_samples = uniform_neg_sampling(remove_edge_info(edgetuple_list), node_list, sample_size, seed = seed)
     elif sampling_method == 'degree':
-        neg_samples = degree_neg_sampling(remove_edge_info(edgetuple_list), node_list, sample_size)
+        neg_samples = degree_neg_sampling(remove_edge_info(edgetuple_list), node_list, sample_size, seed = seed)
     else:
         return ValueError('Can only implement \'uniform\' or \'degree\'')
     return add_edge_info(neg_samples, edgetuple_list[0][0], weight=0)
 
-def split_dataset(edgetuple_list: list, split=[.7, .1, .2]):
+def split_dataset(edgetuple_list: list, split=[.7, .1, .2], seed = 1234):
+    seed_everything(seed)
     graph = nx.Graph(edgetuple_list) # is undirected
     minimal_tree = nx.minimum_spanning_tree(graph) # insure graph is still connected
     train_edge_list = list(set(edgetuple_list).intersection(set(minimal_tree.edges)))
@@ -128,6 +126,40 @@ def scores(y_true: list, y_pred: list):
 
 def get_num_layers(edgetuple_list: list):
     return max(list(itertools.chain.from_iterable(edgetuple_list))[::4])
+
+def degree_neg_sampling(edgetuple_list: list, node_list: list, sample_size: int, seed: int = 1234):
+    seed_everything(seed)
+    outdegree_array = np.zeros((len(node_list),), dtype=np.int32)
+    for edge in edgetuple_list:
+        outdegree_array[edge[0]-1] += 1
+
+    node_probability = outdegree_array / len(edgetuple_list)
+
+    rng = np.random.default_rng()
+    node_samples = rng.choice(node_list, size=sample_size, p=node_probability)
+
+    neg_edgetuple_list = list()
+
+    for target in node_samples:
+        edge = (np.random.randint(1,max(node_list)+1), target)
+        while edge in edgetuple_list or edge in neg_edgetuple_list:
+            edge = (np.random.randint(1,max(node_list)+1), target)
+        
+        neg_edgetuple_list.append(edge)
+
+    return neg_edgetuple_list
+
+def uniform_neg_sampling(edgetuple_list: list, node_list: list, sample_size: int, seed: int = 1234):
+    seed_everything(seed)
+    neg_edgetuple_list = list()
+    for _ in range(sample_size):
+        edge = (np.random.randint(1,max(node_list)+1), np.random.randint(1,max(node_list)+1))
+        while edge in edgetuple_list or edge in neg_edgetuple_list:
+            edge = (np.random.randint(1,max(node_list)+1), np.random.randint(1,max(node_list)+1))
+        
+        neg_edgetuple_list.append(edge)
+
+    return neg_edgetuple_list
 
 
 def parse_args():

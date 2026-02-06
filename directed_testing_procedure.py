@@ -35,7 +35,7 @@ def undirected_test_procedure(model_dict: dict,
                               run: int = 1,
                               network_name = "Vickers",
                               sampling_method: str = "uniform", 
-                              seed = 124):
+                              seed = 1234):
     
     # generate reproducible random seeds 
     seed_everything(seed)
@@ -45,7 +45,7 @@ def undirected_test_procedure(model_dict: dict,
     target_edgetuple_list, aux_edgetuple_list = split_target_auxiliary_layers(edgetuple_list, 
                                                                               target_layer)
     train_edge_list, val_edge_list, test_edge_list = split_dataset(remove_edge_info(target_edgetuple_list), 
-                                                                   split=[.8, .0, .2])
+                                                                   split=[.8, .0, .2], seed = seeds[0])
     train_network_edgelist = partial_multiplex(train_edge_list, 
                                                aux_edgetuple_list, 
                                                target_layer)
@@ -55,11 +55,13 @@ def undirected_test_procedure(model_dict: dict,
     neg_samples = neg_sampling(target_edgetuple_list, 
                                node_list, 
                                len(test_edge_list), 
-                               sampling_method=sampling_method)
+                               sampling_method=sampling_method,
+                               seed = seeds[1])
     test_samples = add_edge_info(test_edge_list, 
                                  target_layer, 
                                  weight = 1) 
     test_samples += neg_samples
+    seed_everything(seeds[2])
     random.shuffle(test_samples)
     true_values = [edge[3] for edge in test_samples]
 
@@ -76,7 +78,8 @@ def undirected_test_procedure(model_dict: dict,
                                              "layer_num": get_num_layers(edgetuple_list),  
                                              "target_layer": target_layer,
                                              "dataset": network_name, 
-                                             "run": run})
+                                             "run": run,
+                                             "seed": seeds[3]})
         
         emb_object.fit(train_network_edgelist)
         source_emb, target_emb = emb_object.model_return()

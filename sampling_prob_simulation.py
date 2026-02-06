@@ -3,48 +3,13 @@ import networkx as nx
 import seaborn as sn
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-
-# number of sampled reciprocal edges simulation using uniform sampling procedure
-
-def uniform_neg_sampling(edgetuple_list: list, node_list: list, sample_size: int):
-    neg_edgetuple_list = list()
-    for _ in range(sample_size):
-        edge = (np.random.randint(1,max(node_list)+1), np.random.randint(1,max(node_list)+1))
-        while edge in edgetuple_list or edge in neg_edgetuple_list:
-            edge = (np.random.randint(1,max(node_list)+1), np.random.randint(1,max(node_list)+1))
-        
-        neg_edgetuple_list.append(edge)
-
-    return neg_edgetuple_list
+from utils import (seed_everything,
+                   uniform_neg_sampling,
+                   degree_neg_sampling)
 
 def uniform_expected_neg_samp(network_denstity: float, neg_ratio = .2):
     sample_size = network_denstity * GRAPH_SIZE * (GRAPH_SIZE - 1) * neg_ratio
     return sample_size / (1 / network_denstity + 1)
-
-# number of sampled reciprocal edges simulation using degree-based sampling procedure
-
-def degree_neg_sampling(edgetuple_list: list, node_list: list, sample_size: int):
-    
-    outdegree_array = np.zeros((len(node_list),), dtype=np.int32)
-    for edge in edgetuple_list:
-        outdegree_array[edge[0]-1] += 1
-
-    node_probability = outdegree_array / len(edgetuple_list)
-
-    rng = np.random.default_rng()
-    node_samples = rng.choice(node_list, size=sample_size, p=node_probability)
-
-    neg_edgetuple_list = list()
-
-    for target in node_samples:
-        edge = (np.random.randint(1,max(node_list)+1), target)
-        while edge in edgetuple_list or edge in neg_edgetuple_list:
-            edge = (np.random.randint(1,max(node_list)+1), target)
-        
-        neg_edgetuple_list.append(edge)
-
-    return neg_edgetuple_list
-
 
 def find_reciprocals(edgetuple_list: list, neg_edgetuple_list: list):
     count = 0
@@ -53,8 +18,8 @@ def find_reciprocals(edgetuple_list: list, neg_edgetuple_list: list):
             count += 1
     return count
 
-def plot_ExpectionsVSSampled(neg_ratio: float, graph_size: int, seed: int):
-    np.random.seed(seed)
+def plot_ExpectionsVSSampled(neg_ratio: float, graph_size: int, seed: int = 1234):
+    seed_everything(seed)
     # Simulation of the number of reciprocal edges sampled plotted together
     # with the expected value curve w.r.t. the density.
 
