@@ -125,7 +125,7 @@ def directed_test_procedure_targetlayer(model_dict: dict,
     # test on reciprocals
     node_list = get_node_list(edgetuple_list)
 
-    reciprocal_samples = get_reciprocals_sample(target_edgetuple_list, len(test_edge_list), seed = seeds[1])
+    reciprocal_samples, true_samples = get_reciprocals_sample(target_edgetuple_list, len(test_edge_list), seed = seeds[1])
     test_recip_samples = add_edge_info(test_edge_list, target_layer, weight = 1) + reciprocal_samples
     seed_everything(seeds[2])
     random.shuffle(test_recip_samples)
@@ -145,6 +145,8 @@ def directed_test_procedure_targetlayer(model_dict: dict,
     for_not_recip_json_file = dict(number_negative_samples = len(not_reciprocal_samples), 
                                   number_reciprocals = find_reciprocals(remove_edge_info(target_edgetuple_list), remove_edge_info(not_reciprocal_samples)),
                                   layer_density = len(target_edgetuple_list) / (len(node_list) * (len(node_list) - 1)))
+
+    truerecip_json_file = dict()
 
     # iterate test over the models
     for model_name in tqdm(model_dict):
@@ -166,6 +168,13 @@ def directed_test_procedure_targetlayer(model_dict: dict,
 
         for_recip_json_file.update({f"{model_name}": recip_results})
 
+        truepredictions = sigmoid_predictor(source_emb.to_numpy(), 
+                                        target_emb.to_numpy(), 
+                                        remove_edge_info(true_samples))
+        truerecip_results = scores([1] * len(true_samples), truepredictions)
+
+        truerecip_json_file.update({f"{model_name}": truerecip_results})
+
         predictions = sigmoid_predictor(source_emb.to_numpy(), 
                                         target_emb.to_numpy(), 
                                         remove_edge_info(test_not_recip_samples))
@@ -176,6 +185,9 @@ def directed_test_procedure_targetlayer(model_dict: dict,
     # write json file with results
     with open(f"Results/Directed/Reciprocals/reciprocal_directed_test_procedure_results_run{run}_seed{seed}.json", "w", encoding="utf-8") as json_file:
         json.dump(for_recip_json_file, json_file, ensure_ascii=False, indent=4)
+
+    with open(f"Results/Directed/Reciprocals/true_directed_test_procedure_results_run{run}_seed{seed}.json", "w", encoding="utf-8") as json_file:
+        json.dump(truerecip_json_file, json_file, ensure_ascii=False, indent=4)
 
     with open(f"Results/Directed/NotReciprocals/not_reciprocal_directed_test_procedure_results_run{run}_seed{seed}.json", "w", encoding="utf-8") as json_file:
         json.dump(for_not_recip_json_file, json_file, ensure_ascii=False, indent=4)

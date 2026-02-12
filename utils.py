@@ -63,12 +63,14 @@ def partial_multiplex(train_edge_list: list, multiplex_aux_edge_list: list, targ
 
 def get_reciprocals(edgetuple_list: list):
     reciprocals = list()
+    true_edges = list()
     for edge in edgetuple_list:
         if (edge[0], edge[2], edge[1], edge[3]) in edgetuple_list:
             continue
         else:
             reciprocals.append((edge[0], edge[2], edge[1], 0))
-    return reciprocals
+            true_edges.append((edge[0], edge[1], edge[2], edge[3]))
+    return reciprocals, true_edges
 
 def get_reciprocals_sample(edgetuple_list: list, sample_size: int, seed: int = 1234):
     seed_everything(seed)
