@@ -255,7 +255,7 @@ def test_procedure(model_dict: dict,
 if __name__ == "__main__":
     model_dict = {"liamne": liamne, "rmne": rmne, "mell": mell}
 
-    dataframe = pd.read_csv("Vickers-Chan-7thGraders_multiplex.txt", sep=" ", header=None)
+    dataframe = pd.read_csv("Datasets/Vickers/Vickers-Chan-7thGraders_multiplex.txt", sep=" ", header=None)
 
     data = list(dataframe.itertuples(index=False, name=None))
 
