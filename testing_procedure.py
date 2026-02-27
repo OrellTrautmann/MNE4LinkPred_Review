@@ -255,7 +255,7 @@ def edgetuplelist_from_csvfile(file_path: str):
 
 if __name__ == "__main__":
     model_dict = {"mell": mell, "liamne": liamne}
-    file_path = "Datasets/Vickers/Vickers-Chan-7thGraders_multiplex.txt"
+    file_path = "Vickers/Vickers-Chan-7thGraders_multiplex.txt"
     outdir = "Results"
     metric_list = ["AUROC",
                    "accuracy",
@@ -265,7 +265,7 @@ if __name__ == "__main__":
 
     data = edgetuplelist_from_csvfile(file_path)
 
-    network_name = file_path.split('/')[1]
+    network_name = file_path.split('/')[0]
 
     if not os.path.exists(outdir + '/' + network_name + '/Undirected'):
         os.makedirs(outdir + '/' + network_name + '/Undirected')

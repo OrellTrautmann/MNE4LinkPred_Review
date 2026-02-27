@@ -1,6 +1,5 @@
 #file types
 *.json
-*.txt
 
 #folder with intermediate data
 MELL_DATA
