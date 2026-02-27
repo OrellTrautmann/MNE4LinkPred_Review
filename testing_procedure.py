@@ -3,16 +3,13 @@ from utils import (parse_args,
                    neg_sampling, 
                    seed_everything, 
                    split_dataset, 
-                   partial_multiplex, 
+                   construct_training_multiplex, 
                    scores, 
                    sigmoid_predictor,
-                   get_node_list, 
-                   remove_edge_info, 
+                   get_node_list,  
                    split_target_auxiliary_layers,
-                   add_edge_info,  
                    get_reciprocals_sample,
                    sample_not_reciprocals, 
-                   find_reciprocals,
                    get_num_layers)
 
 import random
@@ -24,7 +21,6 @@ import os
 # import model classes
 from models.mell import mell
 from models.liamne import liamne
-from models.rmne import rmne
 
 EMB_SIZE = 16
 
@@ -35,7 +31,8 @@ def undirected_test_procedure_targetlayer(model_dict: dict,
                               run: int = 1,
                               network_name = "Vickers",
                               sampling_method: str = "uniform", 
-                              split = [.8, .0, .2],
+                              test_size = .2,
+                              folder: str = '',
                               seed = 1234):
     
     # generate reproducible random seeds 
@@ -45,36 +42,31 @@ def undirected_test_procedure_targetlayer(model_dict: dict,
     # construct training network
     target_edgetuple_list, aux_edgetuple_list = split_target_auxiliary_layers(edgetuple_list, 
                                                                               target_layer)
-    train_edge_list, val_edge_list, test_edge_list = split_dataset(remove_edge_info(target_edgetuple_list), 
-                                                                   split=split, 
-                                                                   seed = seeds[0])
-    train_network_edgelist = partial_multiplex(train_edge_list, 
-                                               aux_edgetuple_list, 
-                                               target_layer)
+    train_edge_list, test_edge_list = split_dataset(target_edgetuple_list, 
+                                                    test_size=test_size, 
+                                                    seed = seeds[0])
+    train_network_edgelist = construct_training_multiplex(train_edge_list, 
+                                                        aux_edgetuple_list)
 
-    # generate testing set with negative samples
     node_list = get_node_list(edgetuple_list)
     neg_samples = neg_sampling(target_edgetuple_list, 
                                node_list, 
                                len(test_edge_list), 
                                sampling_method=sampling_method,
                                seed = seeds[1])
-    test_samples = add_edge_info(test_edge_list, 
-                                 target_layer, 
-                                 weight = 1) 
-    test_samples += neg_samples
+
+    test_samples = test_edge_list + neg_samples
     seed_everything(seeds[2])
     random.shuffle(test_samples)
     true_values = [edge[3] for edge in test_samples]
 
-    # initial dict for results to e saved as json file
-    for_json_file = dict(number_negative_samples = len(neg_samples), 
-                         number_reciprocals = find_reciprocals(remove_edge_info(target_edgetuple_list), 
-                                                              remove_edge_info(neg_samples)),
-                         layer_density = len(target_edgetuple_list) / (len(node_list) * (len(node_list) - 1)))
 
-    # iterate test over the models
     for model_name in tqdm(model_dict):
+        for_json_file = dict(layer = target_layer,
+                            run = run,
+                            network_name = network_name,
+                            model = model_name)
+
         emb_object = model_dict[model_name]({"emb_size": emb_size, 
                                              "node_num": len(node_list), 
                                              "layer_num": get_num_layers(edgetuple_list),  
@@ -86,16 +78,17 @@ def undirected_test_procedure_targetlayer(model_dict: dict,
         emb_object.fit(train_network_edgelist)
         source_emb, target_emb = emb_object.model_return()
 
-        predictions = sigmoid_predictor(source_emb.to_numpy(), 
-                                        target_emb.to_numpy(), 
-                                        remove_edge_info(test_samples))
+        predictions = list(map(int, sigmoid_predictor(source_emb.to_numpy(), 
+                                                    target_emb.to_numpy(), 
+                                                    test_samples)))
+        
         results = scores(true_values, predictions)
 
-        for_json_file.update({f"{model_name}": results})
+        for_json_file.update(results)
 
-    # write json file with results
-    with open(f"Results/Undirected/undirected_test_procedure_results_run{run}_seed{seed}.json", "w", encoding="utf-8") as json_file:
-        json.dump(for_json_file, json_file, ensure_ascii=False, indent=4)
+        # write json file with results
+        with open(folder + f"/undirected_test_procedure_results_model_{model_name}_layer{target_layer}_run{run}_seed{seed}.json", "w", encoding="utf-8") as json_file:
+            json.dump(for_json_file, json_file, ensure_ascii=False, indent=4)
 
 
 def directed_test_procedure_targetlayer(model_dict: dict, 
@@ -105,7 +98,8 @@ def directed_test_procedure_targetlayer(model_dict: dict,
                             run: int = 1,
                             network_name = "Vickers",
                             sampling_method: str = "uniform", 
-                            split = [.8, .0, .2],
+                            test_size: float = .2,
+                            folder: str = '',
                             seed = 1234):
     
     # generate reproducible random seeds 
@@ -115,41 +109,39 @@ def directed_test_procedure_targetlayer(model_dict: dict,
     # construct training network
     target_edgetuple_list, aux_edgetuple_list = split_target_auxiliary_layers(edgetuple_list, 
                                                                               target_layer)
-    train_edge_list, val_edge_list, test_edge_list = split_dataset(remove_edge_info(target_edgetuple_list), 
-                                                                   split=split,
-                                                                   seed = seeds[0])
-    train_network_edgelist = partial_multiplex(train_edge_list, 
-                                               aux_edgetuple_list, 
-                                               target_layer)
+    train_edge_list, test_edge_list = split_dataset(target_edgetuple_list, 
+                                                    test_size=test_size,
+                                                    seed = seeds[0])
+    train_network_edgelist = construct_training_multiplex(train_edge_list, 
+                                                        aux_edgetuple_list)
 
-    # test on reciprocals
     node_list = get_node_list(edgetuple_list)
 
     reciprocal_samples, true_samples = get_reciprocals_sample(target_edgetuple_list, len(test_edge_list), seed = seeds[1])
-    test_recip_samples = add_edge_info(test_edge_list, target_layer, weight = 1) + reciprocal_samples
+    test_recip_samples = true_samples + reciprocal_samples
     seed_everything(seeds[2])
     random.shuffle(test_recip_samples)
     true_recip_values = [edge[3] for edge in test_recip_samples]
 
     not_reciprocal_samples = sample_not_reciprocals(edgetuple_list, node_list, len(test_edge_list), seed = seeds[4])
-    test_not_recip_samples = add_edge_info(test_edge_list, target_layer, weight = 1) + add_edge_info(not_reciprocal_samples, target_layer, weight = 0)
-    seed_everything(seeds[5])
+    test_not_recip_samples = test_edge_list + not_reciprocal_samples
+    seed_everything(seeds[2])
     random.shuffle(test_not_recip_samples)
     true_not_recip_values = [edge[3] for edge in test_not_recip_samples]
 
-    # initial dict for results to e saved as json file
-    for_recip_json_file = dict(number_negative_samples = len(reciprocal_samples), 
-                               number_reciprocals = find_reciprocals(remove_edge_info(target_edgetuple_list), remove_edge_info(reciprocal_samples)),
-                               layer_density = len(target_edgetuple_list) / (len(node_list) * (len(node_list) - 1)))
-    
-    for_not_recip_json_file = dict(number_negative_samples = len(not_reciprocal_samples), 
-                                  number_reciprocals = find_reciprocals(remove_edge_info(target_edgetuple_list), remove_edge_info(not_reciprocal_samples)),
-                                  layer_density = len(target_edgetuple_list) / (len(node_list) * (len(node_list) - 1)))
-
-    truerecip_json_file = dict()
 
     # iterate test over the models
     for model_name in tqdm(model_dict):
+        for_recip_json_file = dict(layer = target_layer,
+                                    run = run,
+                                    network_name = network_name,
+                                    model=model_name)
+    
+        for_not_recip_json_file = dict(layer = target_layer,
+                                        run = run,
+                                        network_name = network_name,
+                                        model=model_name)
+
         emb_object = model_dict[model_name]({"emb_size": emb_size, 
                                              "node_num": len(node_list), 
                                              "layer_num": get_num_layers(edgetuple_list),  
@@ -161,46 +153,36 @@ def directed_test_procedure_targetlayer(model_dict: dict,
         emb_object.fit(train_network_edgelist)
         source_emb, target_emb = emb_object.model_return()
 
-        predictions = sigmoid_predictor(source_emb.to_numpy(), 
+        recip_predictions = sigmoid_predictor(source_emb.to_numpy(), 
                                         target_emb.to_numpy(), 
-                                        remove_edge_info(test_recip_samples))
-        recip_results = scores(true_recip_values, predictions)
+                                        test_recip_samples)
+        recip_results = scores(true_recip_values, recip_predictions)
 
-        for_recip_json_file.update({f"{model_name}": recip_results})
+        for_recip_json_file.update(recip_results)
 
-        truepredictions = sigmoid_predictor(source_emb.to_numpy(), 
+        not_recip_predictions = sigmoid_predictor(source_emb.to_numpy(), 
                                         target_emb.to_numpy(), 
-                                        remove_edge_info(true_samples))
-        truerecip_results = scores([1] * len(true_samples), truepredictions)
+                                        test_not_recip_samples)
+        not_recip_results = scores(true_not_recip_values, not_recip_predictions)
 
-        truerecip_json_file.update({f"{model_name}": truerecip_results})
+        for_not_recip_json_file.update(not_recip_results)
 
-        predictions = sigmoid_predictor(source_emb.to_numpy(), 
-                                        target_emb.to_numpy(), 
-                                        remove_edge_info(test_not_recip_samples))
-        not_recip_results = scores(true_not_recip_values, predictions)
+        # write json file with results
+        with open(folder + f"/Reciprocals/reciprocal_directed_test_procedure_results_model_{model_name}_layer{target_layer}_run{run}_seed{seed}.json", "w", encoding="utf-8") as json_file:
+            json.dump(for_recip_json_file, json_file, ensure_ascii=False, indent=4)
 
-        for_not_recip_json_file.update({f"{model_name}": not_recip_results})
-
-    # write json file with results
-    with open(f"Results/Directed/Reciprocals/reciprocal_directed_test_procedure_results_run{run}_seed{seed}.json", "w", encoding="utf-8") as json_file:
-        json.dump(for_recip_json_file, json_file, ensure_ascii=False, indent=4)
-
-    with open(f"Results/Directed/Reciprocals/true_directed_test_procedure_results_run{run}_seed{seed}.json", "w", encoding="utf-8") as json_file:
-        json.dump(truerecip_json_file, json_file, ensure_ascii=False, indent=4)
-
-    with open(f"Results/Directed/NotReciprocals/not_reciprocal_directed_test_procedure_results_run{run}_seed{seed}.json", "w", encoding="utf-8") as json_file:
-        json.dump(for_not_recip_json_file, json_file, ensure_ascii=False, indent=4)
+        with open(folder + f"/NotReciprocals/not_reciprocal_directed_test_procedure_results_model_{model_name}_layer{target_layer}_run{run}_seed{seed}.json", "w", encoding="utf-8") as json_file:
+            json.dump(for_not_recip_json_file, json_file, ensure_ascii=False, indent=4)
 
 
 def test_procedure(model_dict: dict, 
                    edgetuple_list: list, 
-                   procedure: str = 'directed', 
                    emb_size: int = 16,  
                    runs: int = 1,
                    network_name = "Missing_name",
                    sampling_method: str = "uniform", 
-                   split = [.8, .0, .2],
+                   test_size:float = .2,
+                   outdir: str = "Results",
                    seed = 1234):
     
     seed_everything(seed)
@@ -208,57 +190,92 @@ def test_procedure(model_dict: dict,
     
     num_layers = get_num_layers(edgetuple_list)
 
-    if procedure == 'undirected':
-        if not os.path.exists('Results/Undirected'):
-            os.makedirs('Results/Undirected')
-
-        for run, run_seed in enumerate(seeds):
-            seed_everything(run_seed)
-            new_seeds = np.random.randint(0, 10**6, num_layers)
-
-            for target_layer in range(1, num_layers + 1):
-                undirected_test_procedure_targetlayer(model_dict = model_dict, 
-                                                    edgetuple_list = edgetuple_list, 
-                                                    emb_size = emb_size,  
-                                                    run = run,
-                                                    target_layer = target_layer,
-                                                    network_name = network_name,
-                                                    sampling_method = sampling_method, 
-                                                    split = split,
-                                                    seed = new_seeds[target_layer - 1])
+    path_undirected = outdir + '/' + network_name + '/Undirected'
+    path_directed = outdir + '/' + network_name + '/Directed'
     
-    elif procedure == 'directed':
-        if not os.path.exists('Results/Directed/NotReciprocals'):
-            os.makedirs('Results/Directed/NotReciprocals')
-        if not os.path.exists('Results/Directed/Reciprocals'):
-            os.makedirs('Results/Directed/Reciprocals')
 
-        for run, run_seed in enumerate(seeds):
-            seed_everything(run_seed)
-            new_seeds = np.random.randint(0, 10**6, num_layers)
+    for run, run_seed in enumerate(seeds):
+        seed_everything(run_seed)
+        new_seeds = np.random.randint(0, 10**6, num_layers)
 
-            for target_layer in range(1, num_layers + 1):
-                directed_test_procedure_targetlayer(model_dict = model_dict, 
-                                                    edgetuple_list = edgetuple_list, 
-                                                    emb_size = emb_size,  
-                                                    run = run,
-                                                    target_layer = target_layer,
-                                                    network_name = network_name,
-                                                    sampling_method = sampling_method,
-                                                    split = split, 
-                                                    seed = new_seeds[target_layer - 1])
-    
-    else:
-        return ValueError("Can only choose procedures: \'undirected\' or \'directed\'.")
+        for target_layer in range(1, num_layers + 1):
+            undirected_test_procedure_targetlayer(model_dict = model_dict, 
+                                                edgetuple_list = edgetuple_list, 
+                                                emb_size = emb_size,  
+                                                run = run,
+                                                target_layer = target_layer,
+                                                network_name = network_name,
+                                                sampling_method = sampling_method, 
+                                                test_size=test_size,
+                                                folder=path_undirected,
+                                                seed = new_seeds[target_layer-1])
+            
+            directed_test_procedure_targetlayer(model_dict = model_dict, 
+                                                edgetuple_list = edgetuple_list, 
+                                                emb_size = emb_size,  
+                                                run = run,
+                                                target_layer = target_layer,
+                                                network_name = network_name,
+                                                sampling_method = sampling_method, 
+                                                test_size=test_size,
+                                                folder=path_directed,
+                                                seed = new_seeds[target_layer-1])
+
+def evaluation(outdir: str, network_name: str, metrics: list):
+    subdir_list = ['/Undirected', '/Directed/NotReciprocals', '/Directed/Reciprocals']
+
+    for subdir in subdir_list:
+        final_stat_dict_list = list()
+        path = outdir + '/' + network_name + subdir
+        results = list()
+        for file in os.listdir(path):
+            with open(path + '/' + file, 'r', encoding="utf-8") as json_file:
+                file_results = json.load(json_file)
+                results.append(file_results)
+        
+        results_df = pd.DataFrame.from_records(results)
+        stat_df = results_df.groupby(["layer", "model"]).describe().round(3)
+
+        for index in stat_df.index:
+            temp_dict = {'index': index}
+            for metric in metrics:
+                mean_std_df = stat_df.loc[index,metric][["mean", "std"]].astype(str)
+                mean_std_dict = mean_std_df.to_dict()
+                temp_dict.update({metric: mean_std_dict["mean"] + " (" + mean_std_dict["std"] + ")"})
+
+            final_stat_dict_list.append(temp_dict)
+
+        print(subdir)
+        print(pd.DataFrame(final_stat_dict_list).to_latex(index=False))
+
+def edgetuplelist_from_csvfile(file_path: str):
+    dataframe = pd.read_csv(file_path, sep=" ", header=None)
+    return list(dataframe.itertuples(index=False, name=None))
 
 
 if __name__ == "__main__":
-    model_dict = {"liamne": liamne, "rmne": rmne, "mell": mell}
+    model_dict = {"mell": mell, "liamne": liamne}
+    file_path = "Datasets/Vickers/Vickers-Chan-7thGraders_multiplex.txt"
+    outdir = "Results"
+    metric_list = ["AUROC",
+                   "accuracy",
+                   "avg_prec"]
 
-    dataframe = pd.read_csv("Datasets/Vickers/Vickers-Chan-7thGraders_multiplex.txt", sep=" ", header=None)
+    args = parse_args()
 
-    data = list(dataframe.itertuples(index=False, name=None))
+    data = edgetuplelist_from_csvfile(file_path)
 
-    test_procedure(model_dict, data, emb_size=EMB_SIZE, runs = 5, sampling_method="uniform", split = [.8, .0, .2],)
+    network_name = file_path.split('/')[1]
+
+    if not os.path.exists(outdir + '/' + network_name + '/Undirected'):
+        os.makedirs(outdir + '/' + network_name + '/Undirected')
+    if not os.path.exists(outdir + '/' + network_name + '/Directed/NotReciprocals'):
+        os.makedirs(outdir + '/' + network_name + '/Directed/NotReciprocals')
+    if not os.path.exists(outdir + '/' + network_name + '/Directed/Reciprocals'):
+        os.makedirs(outdir + '/' + network_name + '/Directed/Reciprocals')
+
+    test_procedure(model_dict, data, emb_size=EMB_SIZE, runs = 30, network_name = network_name, sampling_method="uniform", test_size=.2, outdir=outdir, seed = 124)
+
+    evaluation(outdir=outdir, network_name=network_name, metrics=metric_list)
 
     print("fin")

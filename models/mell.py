@@ -137,11 +137,9 @@ class mell(BasicModel):
             reformats the computed embeddings to dataframe where each column represents the embedding vector on one node.
 
         """
-        layer_repr_R = np.reshape(self.R,(3,1,16))
-        layer_repr_R = np.tile(layer_repr_R, (1,29,1))
-        source_emb = pd.DataFrame(np.squeeze((layer_repr_R + self.VH)[self.target_layer-1,:,:]))
+        source_emb = pd.DataFrame(self.R[self.L-1] + self.VH[self.L-1,:,:])
         source_emb.index += 1
-        target_emb = pd.DataFrame(np.squeeze(self.VT[self.target_layer-1,:,:]))
+        target_emb = pd.DataFrame(self.VT[self.L-1,:,:])
         target_emb.index += 1
         return source_emb.T, target_emb.T
     
