@@ -4,7 +4,7 @@
 #folder with intermediate data
 MELL_DATA
 output
-__pycache__
+*/__pycache__
 Results
 Datasets/Twitter
 Datasets/SacchCere
