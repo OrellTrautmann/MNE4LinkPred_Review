@@ -185,21 +185,17 @@ def uniform_neg_sampling(edgetuple_list: list, node_list: list, sample_size: int
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Multiplex network embedding tester pipeline')
-    parser.add_argument('-m', '--model', type=str, default='liamne',
-    					help='Model class written in python')
-    parser.add_argument('-p', '--modelpath', type=str, default='liamne.py',
-    					help='path to file with model class written in python')
     parser.add_argument('-d', '--dim', type=int, default=16,
     					help='size of node embeddings')
-    parser.add_argument('-l', '--layer', type=int, default=1,
-    					help='layer to test on')
-    parser.add_argument('-g', '--directed', type=int, default=0,
-    					help='is the graph directed or not')
-    parser.add_argument('-r', '--runs', type=int, default=1,
+    parser.add_argument('-r', '--runs', type=int, default=30,
     					help='number of runs')
-    parser.add_argument('-i', '--inpath', type=str, default='Datasets/Vickers/Vickers-Chan-7thGraders_multiplex.txt',
+    parser.add_argument('-s', '--seed', type=int, default=124,
+    					help='random seed value')
+    parser.add_argument('-t', '--testsize', type=float, default=.2,
+    					help='test set size ratio')
+    parser.add_argument('-i', '--inpath', type=str, default='Datasets/Vickers/Vickers-Chan-7thGraders_multiplex.edges.txt',
     					help='path to the dataset')
-    parser.add_argument('-o', '--outdir', type=str, default='RESULTS',
+    parser.add_argument('-o', '--outdir', type=str, default='Results',
     					help='path folder to save the results')
     return parser.parse_args()
     

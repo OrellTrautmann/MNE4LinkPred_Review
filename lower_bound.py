@@ -20,10 +20,10 @@ def density(num_edges: int, node_num: int):
 
 
 datasets = [
-    "Datasets/CKM/CKM-Physicians-Innovation_multiplex.txt",
+    "Datasets/CKM/CKM-Physicians-Innovation_multiplex.edges.txt",
     "Datasets/SacchCere/sacchcere_genetic_multiplex.edges.txt",
-    "Datasets/Twitter/Twitter.csv",
-    "Datasets/Vickers/Vickers-Chan-7thGraders_multiplex.txt"
+    "Datasets/Twitter/Twitter.edges.txt",
+    "Datasets/Vickers/Vickers-Chan-7thGraders_multiplex.edges.txt"
 ]
 
 results = list()

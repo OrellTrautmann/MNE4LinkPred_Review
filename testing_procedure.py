@@ -255,18 +255,17 @@ def edgetuplelist_from_csvfile(file_path: str):
 
 if __name__ == "__main__":
     model_dict = {"mell": mell, "liamne": liamne}
-    file_path = "Vickers/Vickers-Chan-7thGraders_multiplex.txt"
-    outdir = "Results"
     metric_list = ["AUROC",
                    "accuracy",
                    "avg_prec"]
 
     args = parse_args()
 
+    file_path = args.inpath
     data = edgetuplelist_from_csvfile(file_path)
+    network_name = file_path.split('/')[1]
 
-    network_name = file_path.split('/')[0]
-
+    outdir = args.outdir
     if not os.path.exists(outdir + '/' + network_name + '/Undirected'):
         os.makedirs(outdir + '/' + network_name + '/Undirected')
     if not os.path.exists(outdir + '/' + network_name + '/Directed/NotReciprocals'):
@@ -274,7 +273,7 @@ if __name__ == "__main__":
     if not os.path.exists(outdir + '/' + network_name + '/Directed/Reciprocals'):
         os.makedirs(outdir + '/' + network_name + '/Directed/Reciprocals')
 
-    test_procedure(model_dict, data, emb_size=EMB_SIZE, runs = 30, network_name = network_name, sampling_method="uniform", test_size=.2, outdir=outdir, seed = 124)
+    test_procedure(model_dict, data, emb_size=args.dim, runs = args.runs, network_name = network_name, sampling_method="uniform", test_size=args.testsize, outdir=outdir, seed = args.seed)
 
     evaluation(outdir=outdir, network_name=network_name, metrics=metric_list)
 

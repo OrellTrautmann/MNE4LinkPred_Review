@@ -1,0 +1,19 @@
+Auflistung der Ordnerpfade
+Volumeseriennummer : 9A37-21C4
+C:.
+¦   tree.txt
+¦   
++---CKM
+¦       CKM-Physicians-Innovation_multiplex.edges.txt
+¦       
++---SacchCere
+¦       sacchcere_genetic_multiplex.edges.txt
+¦       
++---Twitter
+¦       retweet_edges.csv
+¦       social_edges.csv
+¦       Twitter.edges.txt
+¦       
++---Vickers
+        Vickers-Chan-7thGraders_multiplex.edges.txt
+        
