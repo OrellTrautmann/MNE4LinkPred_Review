@@ -14,7 +14,8 @@ To compute the Chvatal lower bounds:
 2) Save the files as .txt in a directory called Datasets according to the tree:
 
 Datasets:
-![Datasets directory tree](Dataset_tree.png)
+
+![Datasets directory tree](Dataset_tree.png =x100)
 
 3) Now run
 
