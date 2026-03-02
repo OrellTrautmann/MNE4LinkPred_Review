@@ -14,18 +14,8 @@ To compute the Chvatal lower bounds:
 2) Save the files as .txt in a directory called Datasets according to the tree:
 
 Datasets:
-    +---CKM
-    ¦       CKM-Physicians-Innovation_multiplex.edges.txt
-    ¦       
-    +---SacchCere
-    ¦       sacchcere_genetic_multiplex.edges.txt
-    ¦       
-    +---Twitter
-    ¦       retweet_edges.csv
-    ¦       social_edges.csv
-    ¦       
-    +---Vickers
-            Vickers-Chan-7thGraders_multiplex.edges.txt
+   
+
 3) Now run
 
        python construct_twitter.py
