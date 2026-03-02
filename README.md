@@ -12,6 +12,7 @@ To reproduce the resoluts from our paper, follow these steps:
 To compute the Chvatal lower bounds:
 1) First download the Vickers, CKM, SacchCere and social and retweet Higgs Boson datasets from https://manliodedomenico.com/data.php.
 2) Save the files as .txt in a directory called Datasets according to the tree:
+
 Datasets:
     +---CKM
     ¦       CKM-Physicians-Innovation_multiplex.edges.txt
