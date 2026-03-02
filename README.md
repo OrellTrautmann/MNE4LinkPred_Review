@@ -15,7 +15,7 @@ To compute the Chvatal lower bounds:
 
 Datasets:
 
-![Datasets directory tree](Dataset_tree.png =x100)
+<img src="Dataset_tree.png" width="100">
 
 3) Now run
 
