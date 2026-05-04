@@ -3,7 +3,8 @@ The repository holds the code and experimentation to the paper "Embedding Learni
 
 To get started clone the repository to your local computer. Then run 
 
-    conda create -n grasp python=3.10 --file requirements.txt
+    conda create -n mne_review python=3.10 
+    pip install -r requirements.txt
     
 in the anaconda prompt inside the repository. 
 
