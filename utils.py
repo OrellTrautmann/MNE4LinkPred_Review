@@ -187,7 +187,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Multiplex network embedding tester pipeline')
     parser.add_argument('-d', '--dim', type=int, default=16,
     					help='size of node embeddings')
-    parser.add_argument('-r', '--runs', type=int, default=30,
+    parser.add_argument('-r', '--runs', type=int, default=10,
     					help='number of runs')
     parser.add_argument('-s', '--seed', type=int, default=124,
     					help='random seed value')

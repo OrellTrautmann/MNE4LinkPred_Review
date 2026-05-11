@@ -217,7 +217,7 @@ def test_procedure(model_dict: dict,
 
 def evaluation(outdir: str, network_name: str, metrics: list):
     subdir_list = ['/Undirected', '/Directed/NotReciprocals', '/Directed/Reciprocals']
-
+    df_list = []
     for subdir in subdir_list:
         final_stat_dict_list = list()
         path = outdir + '/' + network_name + subdir

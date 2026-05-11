@@ -43,9 +43,10 @@ def construct_role_pairs(path, nodes_idx_nets, structure_feature_list, graphs_ro
         role_pairs = []
         for node in nodes_idx:
             node = str(node)
+            #print(node, structure_feature_list[view_id])
             roleOFnode = structure_feature_list[view_id][node][0]
             
-            role_pairs.append(add_one_node(graphs_roles,id=layer, roleOFnode=roleOFnode,node=node))  ##
+            role_pairs.append(add_one_node(graphs_roles,id=layer, roleOFnode=roleOFnode,node=node))  ##changed
             
         print(f"pairs {layer} length:  ")
         print(len(role_pairs))
@@ -224,16 +225,11 @@ class rmne(BasicModel):
         train_data : dictionary of lists of nodes ordered by layer.
         '''
         dataset = pd.DataFrame(dataset)
-        print(dataset.head(5))
         self.layers = list(dataset[0].unique())
-        print(self.layers)
         self.params.nviews = len(self.layers)
         
         #because the rmne produce an embedding vector for each layer and concatenates them for the final embedding
         self.params.dimensions = self.params.dimensions//self.params.nviews
-        
-        dataset[1] -= 1
-        dataset[2] -= 1
         
         nodes = list(set(dataset[1]).union(set(dataset[2])))
         
