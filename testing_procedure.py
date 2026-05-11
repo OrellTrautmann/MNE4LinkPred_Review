@@ -18,12 +18,6 @@ from tqdm import tqdm
 import json
 import os
 
-# import model classes
-from models.mell import mell
-from models.liamne import liamne
-
-EMB_SIZE = 16
-
 def undirected_test_procedure_targetlayer(model_dict: dict, 
                               edgetuple_list: list, 
                               target_layer: int = 1, 
@@ -254,7 +248,12 @@ def edgetuplelist_from_csvfile(file_path: str):
 
 
 if __name__ == "__main__":
-    model_dict = {"mell": mell, "liamne": liamne}
+    # import model classes
+    from models.mell import mell
+    from models.liamne import liamne
+    from models.rmne import rmne
+
+    model_dict = {"mell": mell, "liamne": liamne, "rmne": rmne}
     metric_list = ["AUROC",
                    "accuracy",
                    "avg_prec"]

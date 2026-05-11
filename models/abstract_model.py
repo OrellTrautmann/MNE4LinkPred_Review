@@ -1,4 +1,4 @@
-# BasicModel class is based on the work by 
+# BasicModel class structure is based on the work by 
 # @article{reda2024stanscofi,
 #  title={stanscofi and benchscofi: a new standard for drug repurposing by collaborative filtering},
 #  author={R{\'e}da, Cl{\'e}mence and Vie, Jill-J{\^e}nn and Wolkenhauer, Olaf},
@@ -13,13 +13,6 @@
 
 import numpy as np
 import random
-import pandas as pd
-import torch
-import sys
-import os
-import pathlib
-#sys.path.clear
-#current_dir_path = str(pathlib.Path().resolve())
 
 ###############################################################################################################
 ###################

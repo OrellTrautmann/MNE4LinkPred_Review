@@ -1,6 +1,8 @@
 import pandas as pd
 import argparse
 
+"""WARNING: Not to be used on big datasets like Twitter!!!"""
+
 def parse_args():
     parser = argparse.ArgumentParser(description='Multiplex network embedding tester pipeline')
     parser.add_argument('-p', '--path', type=str, default='Datasets/Vickers/Vickers-Chan-7thGraders_multiplex.edges.txt',
