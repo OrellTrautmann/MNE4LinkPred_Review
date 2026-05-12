@@ -120,7 +120,9 @@ class RMNE(nn.Module):  # ready for cluster, no cache cleaning or loop shortenin
                 replacement=True).to(self.device)
             negative_context_emb = self.neigh_embeddings[i](negative_context).view(len(batch_indices), -1,
                                                                                    self.embedding_dim).neg()
-            loss_negative = nn.functional.logsigmoid(torch.bmm(negative_context_emb, node_emb)).squeeze().sum(1).mean(0)
+            
+            nn.functional.logsigmoid(torch.bmm(negative_context_emb, node_emb)).squeeze(2).sum(1).mean(0)
+            loss_negative = nn.functional.logsigmoid(torch.bmm(negative_context_emb, node_emb)).squeeze(2).sum(1).mean(0) ##added dim 2 in squeeze
             cost.append(loss_positive + loss_negative)
             for j in range(self.num_net):
                 if j != i:
@@ -133,7 +135,7 @@ class RMNE(nn.Module):  # ready for cluster, no cache cleaning or loop shortenin
                         replacement=True).to(self.device)
                     negative_context_emb2 = self.node_embeddings[j](negative_context2).view(len(batch_indices), -1,
                                                                                             self.embedding_dim).neg()
-                    loss_negative2 = nn.functional.logsigmoid(torch.bmm(negative_context_emb2, node_emb)).squeeze().sum(
+                    loss_negative2 = nn.functional.logsigmoid(torch.bmm(negative_context_emb2, node_emb)).squeeze(2).sum(##added dim 2
                         1).mean(0)
                     cost.append(hyp1 * (loss_positive2 + loss_negative2))
             for j in range(self.num_net):
@@ -149,7 +151,7 @@ class RMNE(nn.Module):  # ready for cluster, no cache cleaning or loop shortenin
                         replacement=True).to(self.device)
                     negative_context_emb3 = self.neigh_embeddings[j](negative_context3).view(len(batch_indices), -1,
                                                                                              self.embedding_dim).neg()
-                    loss_negative3 = nn.functional.logsigmoid(torch.bmm(negative_context_emb3, node_emb)).squeeze().sum(
+                    loss_negative3 = nn.functional.logsigmoid(torch.bmm(negative_context_emb3, node_emb)).squeeze(2).sum( ##added dim 2
                         1).mean(0)
                     cost.append(hyp2 * (loss_positive3 + loss_negative3))
             
@@ -165,7 +167,7 @@ class RMNE(nn.Module):  # ready for cluster, no cache cleaning or loop shortenin
                     self.device)
                 negative_context_emb4 = self.node_embeddings[j](negative_context4).view(len(batch_indices), -1,
                                                                                         self.embedding_dim).neg()
-                loss_negative4 = nn.functional.logsigmoid(torch.bmm(negative_context_emb4, node_emb)).squeeze().sum(
+                loss_negative4 = nn.functional.logsigmoid(torch.bmm(negative_context_emb4, node_emb)).squeeze(2).sum(##added dim 2
                     1).mean(0)
 
                 cost.append(hyp3 * (loss_positive4 + loss_negative4))

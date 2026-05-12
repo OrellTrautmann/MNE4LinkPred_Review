@@ -253,7 +253,7 @@ if __name__ == "__main__":
     from models.liamne import liamne
     from models.rmne import rmne
 
-    model_dict = {"mell": mell, "liamne": liamne, "rmne": rmne}
+    model_dict = {"rmne":rmne}#{"mell": mell, "liamne": liamne, "rmne": rmne}
     metric_list = ["AUROC",
                    "accuracy",
                    "avg_prec"]
