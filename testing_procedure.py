@@ -16,6 +16,7 @@ import random
 import numpy as np
 from tqdm import tqdm
 import json
+from joblib import Parallel, delayed, cpu_count
 import os
 
 def undirected_test_procedure_targetlayer(model_dict: dict, 
@@ -169,6 +170,44 @@ def directed_test_procedure_targetlayer(model_dict: dict,
             json.dump(for_not_recip_json_file, json_file, ensure_ascii=False, indent=4)
 
 
+def parallel_work(model_dict, 
+                            edgetuple_list, 
+                            emb_size,
+                            run,
+                            run_seed,
+                            network_name,
+                            sampling_method, 
+                            test_size,
+                            path_undirected,
+                            path_directed,
+                            num_layers):
+            
+            seed_everything(run_seed)
+            new_seeds = np.random.randint(0, 10**6, num_layers)
+
+            for target_layer in range(1, num_layers + 1):
+                undirected_test_procedure_targetlayer(model_dict = model_dict, 
+                                                    edgetuple_list = edgetuple_list, 
+                                                    emb_size = emb_size,  
+                                                    run = run,
+                                                    target_layer = target_layer,
+                                                    network_name = network_name,
+                                                    sampling_method = sampling_method, 
+                                                    test_size=test_size,
+                                                    folder=path_undirected,
+                                                    seed = new_seeds[target_layer-1])
+                
+                directed_test_procedure_targetlayer(model_dict = model_dict, 
+                                                    edgetuple_list = edgetuple_list, 
+                                                    emb_size = emb_size,  
+                                                    run = run,
+                                                    target_layer = target_layer,
+                                                    network_name = network_name,
+                                                    sampling_method = sampling_method, 
+                                                    test_size=test_size,
+                                                    folder=path_directed,
+                                                    seed = new_seeds[target_layer-1])
+
 def test_procedure(model_dict: dict, 
                    edgetuple_list: list, 
                    emb_size: int = 16,  
@@ -177,6 +216,7 @@ def test_procedure(model_dict: dict,
                    sampling_method: str = "uniform", 
                    test_size:float = .2,
                    outdir: str = "Results",
+                   njobs: int = 1,
                    seed = 1234):
     
     seed_everything(seed)
@@ -186,34 +226,18 @@ def test_procedure(model_dict: dict,
 
     path_undirected = outdir + '/' + network_name + '/Undirected'
     path_directed = outdir + '/' + network_name + '/Directed'
-    
 
-    for run, run_seed in enumerate(seeds):
-        seed_everything(run_seed)
-        new_seeds = np.random.randint(0, 10**6, num_layers)
-
-        for target_layer in range(1, num_layers + 1):
-            undirected_test_procedure_targetlayer(model_dict = model_dict, 
-                                                edgetuple_list = edgetuple_list, 
-                                                emb_size = emb_size,  
-                                                run = run,
-                                                target_layer = target_layer,
-                                                network_name = network_name,
-                                                sampling_method = sampling_method, 
-                                                test_size=test_size,
-                                                folder=path_undirected,
-                                                seed = new_seeds[target_layer-1])
-            
-            directed_test_procedure_targetlayer(model_dict = model_dict, 
-                                                edgetuple_list = edgetuple_list, 
-                                                emb_size = emb_size,  
-                                                run = run,
-                                                target_layer = target_layer,
-                                                network_name = network_name,
-                                                sampling_method = sampling_method, 
-                                                test_size=test_size,
-                                                folder=path_directed,
-                                                seed = new_seeds[target_layer-1])
+    Parallel(n_jobs=njobs, backend="loky")(delayed(parallel_work)(model_dict, 
+                                                        edgetuple_list, 
+                                                        emb_size,
+                                                        run,
+                                                        run_seed,
+                                                        network_name,
+                                                        sampling_method, 
+                                                        test_size,
+                                                        path_undirected,
+                                                        path_directed,
+                                                        num_layers) for run, run_seed in enumerate(seeds))
 
 def evaluation(outdir: str, network_name: str, metrics: list):
     subdir_list = ['/Undirected', '/Directed/NotReciprocals', '/Directed/Reciprocals']
@@ -253,6 +277,13 @@ if __name__ == "__main__":
     from models.liamne import liamne
     from models.rmne import rmne
 
+    if cpu_count() > 2:
+        njobs = cpu_count() - 2
+    else:
+        njobs = 1
+
+    print("njobs",njobs)
+
     model_dict = {"mell": mell, "liamne": liamne, "rmne": rmne}
     metric_list = ["AUROC",
                    "accuracy",
@@ -272,7 +303,7 @@ if __name__ == "__main__":
     if not os.path.exists(outdir + '/' + network_name + '/Directed/Reciprocals'):
         os.makedirs(outdir + '/' + network_name + '/Directed/Reciprocals')
 
-    test_procedure(model_dict, data, emb_size=args.dim, runs = args.runs, network_name = network_name, sampling_method="uniform", test_size=args.testsize, outdir=outdir, seed = args.seed)
+    test_procedure(model_dict, data, emb_size=args.dim, runs = args.runs, network_name = network_name, sampling_method="uniform", test_size=args.testsize, outdir=outdir, njobs = njobs, seed = args.seed)
 
     evaluation(outdir=outdir, network_name=network_name, metrics=metric_list)
 
