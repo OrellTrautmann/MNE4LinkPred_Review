@@ -18,6 +18,7 @@ from tqdm import tqdm
 import json
 from joblib import Parallel, delayed, cpu_count
 import os
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 
 def undirected_test_procedure_targetlayer(model_dict: dict, 
                               edgetuple_list: list, 
@@ -171,16 +172,16 @@ def directed_test_procedure_targetlayer(model_dict: dict,
 
 
 def parallel_work(model_dict, 
-                            edgetuple_list, 
-                            emb_size,
-                            run,
-                            run_seed,
-                            network_name,
-                            sampling_method, 
-                            test_size,
-                            path_undirected,
-                            path_directed,
-                            num_layers):
+                    edgetuple_list, 
+                    emb_size,
+                    run,
+                    run_seed,
+                    network_name,
+                    sampling_method, 
+                    test_size,
+                    path_undirected,
+                    path_directed,
+                    num_layers):
             
             seed_everything(run_seed)
             new_seeds = np.random.randint(0, 10**6, num_layers)
@@ -263,8 +264,8 @@ def evaluation(outdir: str, network_name: str, metrics: list):
 
             final_stat_dict_list.append(temp_dict)
 
-        print(subdir)
-        print(pd.DataFrame(final_stat_dict_list).to_latex(index=False))
+        file = "result_table" + "_".join(subdir.split("/")) + ".tex"
+        pd.DataFrame(final_stat_dict_list).to_latex(file, index=False)
 
 def edgetuplelist_from_csvfile(file_path: str):
     dataframe = pd.read_csv(file_path, sep=" ", header=None)
