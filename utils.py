@@ -197,6 +197,8 @@ def parse_args():
     					help='path to the dataset')
     parser.add_argument('-o', '--outdir', type=str, default='Results',
     					help='path folder to save the results')
+    parser.add_argument('-p', '--parallel', type=int, default=1,
+    					help='set to parallel if 1 or sequential if 0')
     return parser.parse_args()
     
 

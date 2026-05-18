@@ -218,7 +218,8 @@ def test_procedure(model_dict: dict,
                    test_size:float = .2,
                    outdir: str = "Results",
                    njobs: int = 1,
-                   seed = 1234):
+                   seed = 1234,
+                   parallel = True):
     
     seed_everything(seed)
     seeds = np.random.randint(0, 10**6, runs)
@@ -228,21 +229,35 @@ def test_procedure(model_dict: dict,
     path_undirected = outdir + '/' + network_name + '/Undirected'
     path_directed = outdir + '/' + network_name + '/Directed'
 
-    Parallel(n_jobs=njobs, backend="loky")(delayed(parallel_work)(model_dict, 
-                                                        edgetuple_list, 
-                                                        emb_size,
-                                                        run,
-                                                        run_seed,
-                                                        network_name,
-                                                        sampling_method, 
-                                                        test_size,
-                                                        path_undirected,
-                                                        path_directed,
-                                                        num_layers) for run, run_seed in enumerate(seeds))
+    if parallel:
+        Parallel(n_jobs=njobs, backend="loky")(delayed(parallel_work)(model_dict, 
+                                                            edgetuple_list, 
+                                                            emb_size,
+                                                            run,
+                                                            run_seed,
+                                                            network_name,
+                                                            sampling_method, 
+                                                            test_size,
+                                                            path_undirected,
+                                                            path_directed,
+                                                            num_layers) for run, run_seed in enumerate(seeds))
+        
+    else:
+        for run, run_seed in enumerate(seeds):
+            parallel_work(model_dict, 
+                            edgetuple_list, 
+                            emb_size,
+                            run,
+                            run_seed,
+                            network_name,
+                            sampling_method, 
+                            test_size,
+                            path_undirected,
+                            path_directed,
+                            num_layers)
 
 def evaluation(outdir: str, network_name: str, metrics: list):
     subdir_list = ['/Undirected', '/Directed/NotReciprocals', '/Directed/Reciprocals']
-    df_list = []
     for subdir in subdir_list:
         final_stat_dict_list = list()
         path = outdir + '/' + network_name + subdir
@@ -264,7 +279,7 @@ def evaluation(outdir: str, network_name: str, metrics: list):
 
             final_stat_dict_list.append(temp_dict)
 
-        file = "result_table" + "_".join(subdir.split("/")) + ".tex"
+        file = f"result_table_{network_name}" + "_".join(subdir.split("/")) + ".tex"
         pd.DataFrame(final_stat_dict_list).to_latex(file, index=False)
 
 def edgetuplelist_from_csvfile(file_path: str):
@@ -304,7 +319,7 @@ if __name__ == "__main__":
     if not os.path.exists(outdir + '/' + network_name + '/Directed/Reciprocals'):
         os.makedirs(outdir + '/' + network_name + '/Directed/Reciprocals')
 
-    test_procedure(model_dict, data, emb_size=args.dim, runs = args.runs, network_name = network_name, sampling_method="uniform", test_size=args.testsize, outdir=outdir, njobs = njobs, seed = args.seed)
+    test_procedure(model_dict, data, emb_size=args.dim, runs = args.runs, network_name = network_name, sampling_method="uniform", test_size=args.testsize, outdir=outdir, njobs = njobs, seed = args.seed, parallel=bool(args.parallel))
 
     evaluation(outdir=outdir, network_name=network_name, metrics=metric_list)
 
