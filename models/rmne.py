@@ -43,8 +43,13 @@ def construct_role_pairs(path, nodes_idx_nets, structure_feature_list, graphs_ro
         role_pairs = []
         for node in nodes_idx:
             node = str(node)
-            #print(node, structure_feature_list[view_id])
-            roleOFnode = structure_feature_list[view_id][node][0]
+            #print(node, view_id)
+            try:
+                roleOFnode = structure_feature_list[view_id][node][0]
+            except KeyError:
+                print(view_id, layer, node)
+                print(structure_feature_list[view_id])
+                raise KeyError
             
             role_pairs.append(add_one_node(graphs_roles,id=layer, roleOFnode=roleOFnode,node=node))  ##changed
             
@@ -244,6 +249,7 @@ class rmne(BasicModel):
             layer_nodes = list(set(data1[1]).union(set(data1[2])))
             missing_nodes = list(set(nodes).difference(set(layer_nodes)))
             self.missing_nodes.append(missing_nodes)
+
         return data
     
     def _model_fit(self, data):
@@ -312,7 +318,7 @@ class rmne(BasicModel):
             """
             node_role_nets.append(construct_role_pairs(
                 self.newpath, nodes_idx,  structure_feature_list, graphs_roles, self.params.nviews, n_net))
-            
+
         print(len(node_role_nets[0]))
         multinomial_nodes_idx = degree_nodes_common_nodes(G, common_nodes, node2idx)
     

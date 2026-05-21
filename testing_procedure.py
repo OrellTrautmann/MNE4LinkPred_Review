@@ -38,7 +38,8 @@ def undirected_test_procedure_targetlayer(model_dict: dict,
     # construct training network
     target_edgetuple_list, aux_edgetuple_list = split_target_auxiliary_layers(edgetuple_list, 
                                                                               target_layer)
-    train_edge_list, test_edge_list = split_dataset(target_edgetuple_list, 
+    train_edge_list, test_edge_list = split_dataset(edgetuple_list, 
+                                                    target_layer=target_layer,
                                                     test_size=test_size, 
                                                     seed = seeds[0])
     train_network_edgelist = construct_training_multiplex(train_edge_list, 
@@ -105,7 +106,8 @@ def directed_test_procedure_targetlayer(model_dict: dict,
     # construct training network
     target_edgetuple_list, aux_edgetuple_list = split_target_auxiliary_layers(edgetuple_list, 
                                                                               target_layer)
-    train_edge_list, test_edge_list = split_dataset(target_edgetuple_list, 
+    train_edge_list, test_edge_list = split_dataset(edgetuple_list, 
+                                                    target_layer=target_layer, 
                                                     test_size=test_size,
                                                     seed = seeds[0])
     train_network_edgelist = construct_training_multiplex(train_edge_list, 
@@ -300,7 +302,7 @@ if __name__ == "__main__":
 
     print("njobs",njobs)
 
-    model_dict = {"mell": mell, "liamne": liamne, "rmne": rmne}
+    model_dict = {"rmne": rmne} #{"mell": mell, "liamne": liamne, "rmne": rmne}
     metric_list = ["AUROC",
                    "accuracy",
                    "avg_prec"]

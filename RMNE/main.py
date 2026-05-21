@@ -154,7 +154,6 @@ class RMNE(nn.Module):  # ready for cluster, no cache cleaning or loop shortenin
                     loss_negative3 = nn.functional.logsigmoid(torch.bmm(negative_context_emb3, node_emb)).squeeze(2).sum( ##added dim 2
                         1).mean(0)
                     cost.append(hyp2 * (loss_positive3 + loss_negative3))
-            
             for j in range(self.num_net):
                 ###
                 role_neighs_idx = torch.LongTensor(node_role_nets[i][j][batch_indices]).to(self.device)  ##00, 10

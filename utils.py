@@ -16,11 +16,17 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 def get_node_list(edgetuple_list: list):
-    reduced_edgetuples = [(edge[1], edge[2]) for edge in edgetuple_list]
+    if len(edgetuple_list[0]) == 4:
+        reduced_edgetuples = [(edge[1], edge[2]) for edge in edgetuple_list]
+    else:
+        reduced_edgetuples = edgetuple_list
     return list(set(itertools.chain.from_iterable(reduced_edgetuples)))
 
 def remove_edge_info(edgetuple_list: list):
     return [(edge[1], edge[2]) for edge in edgetuple_list]
+
+def add_edge_info(edgetuple_list: list, layer: int, weight: float = 1.):
+    return [(layer, edge[0], edge[1], weight) for edge in edgetuple_list]
 
 def neg_sampling(edgetuple_list: list, node_list: list, sample_size: int, seed: int = 1234, sampling_method: str = 'uniform'):
     if sampling_method == 'uniform':
@@ -31,20 +37,47 @@ def neg_sampling(edgetuple_list: list, node_list: list, sample_size: int, seed: 
         return ValueError('Can only implement \'uniform\' or \'degree\'')
     return neg_samples
 
-def split_dataset(edgetuple_list: list, test_size = .2, seed = 1234):
+def split_target_auxiliary_layers(edgetuple_list: list, target_layer: int):
+    target_layer_edge_list = list()
+    aux_layers_edge_list = list()
+    for edge in edgetuple_list:
+        if edge[0] == target_layer:
+            target_layer_edge_list.append(edge)
+        else:
+            aux_layers_edge_list.append(edge)
+    return target_layer_edge_list, aux_layers_edge_list
+
+def construct_training_multiplex(train_edge_list: list, multiplex_aux_edge_list: list):
+    return multiplex_aux_edge_list + train_edge_list
+
+def split_dataset(edgetuple_list: list, target_layer: int, test_size = .2, seed = 1234):
     seed_everything(seed)
-    graph = nx.Graph(remove_edge_info(edgetuple_list)) # is undirected
+    target_edgetuple_list, aux_edgetuple_list = split_target_auxiliary_layers(edgetuple_list, target_layer)
+    nodes_in_aux = get_node_list(aux_edgetuple_list)
+    nodes_in_network = get_node_list(edgetuple_list)
+    
+    infoless_target_list = remove_edge_info(target_edgetuple_list)
+    graph = nx.Graph(infoless_target_list) # is undirected
     minimal_tree = nx.minimum_spanning_tree(graph) # insure graph is still connected
-    train_edge_list = list(set(edgetuple_list).intersection(set(minimal_tree.edges)))
-    remain_edge_list = list(set(edgetuple_list).difference(set(minimal_tree.edges)))
-    if len(train_edge_list) / len(edgetuple_list) < 1 - test_size:
-        additional_edge_list = random.sample(remain_edge_list, round((1 - test_size) * len(edgetuple_list) - len(train_edge_list)))
+    train_edge_list = list(set(infoless_target_list).intersection(set(minimal_tree.edges)))
+    remain_edge_list = list(set(infoless_target_list).difference(set(minimal_tree.edges)))
+
+    if len(train_edge_list) / len(target_edgetuple_list) < 1 - test_size:
+        additional_edge_list = random.sample(remain_edge_list, round((1 - test_size) * len(target_edgetuple_list) - len(train_edge_list)))
         train_edge_list.extend(additional_edge_list)
         remain_edge_list = list(set(remain_edge_list).difference(set(additional_edge_list)))
-    elif len(train_edge_list) / len(edgetuple_list) > 1 - test_size:
+    elif len(train_edge_list) / len(target_edgetuple_list) > 1 - test_size:
         return ValueError('The graph does not contain enough connected edges for split')
+    
+    missing_nodes = list(set(nodes_in_network).difference(set(nodes_in_aux).union(set(get_node_list(train_edge_list)))))
+    if len(missing_nodes) != 0:
+        for node in missing_nodes:
+            edges_at_node_list = list(graph.edges(node))
+            train_edge_list.append(edges_at_node_list[np.random.randint(len(edges_at_node_list))])
 
-    return train_edge_list, remain_edge_list
+        remain_edge_list = list(set(remain_edge_list).difference(set(train_edge_list)))
+
+    return add_edge_info(train_edge_list, layer=target_layer, weight=1), add_edge_info(remain_edge_list, layer=target_layer, weight=1)
 
 def edgelist_2_edgedict(edgetuple_list):
     num_layers = get_num_layers(edgetuple_list)
@@ -64,19 +97,6 @@ def edgelist_from_edgedict(edgetuple_dict: dict, weight: int):
         edgetuple_list.extend([(layer, edge[0], edge[1], weight) for edge in edgetuple_dict])
     return edgetuple_list
 
-def split_target_auxiliary_layers(edgetuple_list: list, target_layer: int):
-    target_layer_edge_list = list()
-    aux_layers_edge_list = list()
-    for edge in edgetuple_list:
-        if edge[0] == target_layer:
-            target_layer_edge_list.append(edge)
-        else:
-            aux_layers_edge_list.append(edge)
-    return target_layer_edge_list, aux_layers_edge_list
-
-def construct_training_multiplex(train_edge_list: list, multiplex_aux_edge_list: list):
-    return multiplex_aux_edge_list + train_edge_list
-
 def get_reciprocals(edgetuple_list: list):
     reciprocals = list()
     true_edges = list()
@@ -93,7 +113,6 @@ def get_reciprocals_sample(edgetuple_list: list, sample_size: int, seed: int = 1
     reciprocals, true_edges = get_reciprocals(edgetuple_list)
     if len(reciprocals) > sample_size:
         indices = np.random.choice(len(reciprocals), size= len(reciprocals) - sample_size, replace=False)
-        print(indices)
         return [reciprocals[index] for index in indices], [true_edges[index] for index in indices]
     else:
         return reciprocals, true_edges
@@ -266,3 +285,31 @@ def boxplots_per_network_per_score_per_layer(network_lst, score_lst, plotdata_ls
                 plt.close()                     
     
     return
+
+if __name__=="__main__":
+    import pandas
+    df = pandas.read_csv("Datasets\CKM\CKM-Physicians-Innovation_multiplex.edges.txt", sep=" ", header=None)
+    edgetuple_list = list(df.itertuples(index=False, name=None))
+    target_layer = 1
+    test_size = .2
+    seeds = [0]
+
+    target_edgetuple_list, aux_edgetuple_list = split_target_auxiliary_layers(edgetuple_list, 
+                                                                              target_layer)
+    
+    print(target_edgetuple_list)
+    print(aux_edgetuple_list)
+
+    train_edge_list, test_edge_list = split_dataset(edgetuple_list, 
+                                                    target_layer=target_layer,
+                                                    test_size=test_size, 
+                                                    seed = seeds[0])
+    
+    print(train_edge_list)
+    print(test_edge_list)
+
+    train_network_edgelist = construct_training_multiplex(train_edge_list, 
+                                                        aux_edgetuple_list)
+    print(train_network_edgelist)
+    
+    print("fin")
