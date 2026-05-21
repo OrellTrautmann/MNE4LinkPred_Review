@@ -302,7 +302,7 @@ if __name__ == "__main__":
 
     print("njobs",njobs)
 
-    model_dict = {"rmne": rmne} #{"mell": mell, "liamne": liamne, "rmne": rmne}
+    model_dict = {"mell": mell, "liamne": liamne, "rmne": rmne}
     metric_list = ["AUROC",
                    "accuracy",
                    "avg_prec"]
