@@ -208,7 +208,7 @@ def parse_args():
     					help='size of node embeddings')
     parser.add_argument('-r', '--runs', type=int, default=10,
     					help='number of runs')
-    parser.add_argument('-s', '--seed', type=int, default=134,
+    parser.add_argument('-s', '--seed', type=int, default=1234,
     					help='random seed value')
     parser.add_argument('-t', '--testsize', type=float, default=.2,
     					help='test set size ratio')
