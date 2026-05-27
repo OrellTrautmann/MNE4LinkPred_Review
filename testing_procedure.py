@@ -310,12 +310,12 @@ if __name__ == "__main__":
 
     args = parse_args()
 
-    if args.njobs > cpu_count() and args.njobs > 2:
+    if args.parallel > cpu_count() and args.parallel > 2:
         njobs = cpu_count()
-    elif args.njobs < 0:
+    elif args.parallel < 0:
         njobs = 0
     else:
-        njobs = args.njobs
+        njobs = args.parallel
 
     print("njobs", njobs)
 
