@@ -217,7 +217,7 @@ def parse_args():
     parser.add_argument('-o', '--outdir', type=str, default='Results',
     					help='path folder to save the results')
     parser.add_argument('-p', '--parallel', type=int, default=1,
-    					help='set to parallel if 1 or sequential if 0')
+    					help='set to parallel number of cores to be used or sequential if 0')
     return parser.parse_args()
     
 

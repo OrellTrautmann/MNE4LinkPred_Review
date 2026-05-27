@@ -112,6 +112,9 @@ def directed_test_procedure_targetlayer(model_dict: dict,
                                                     seed = seeds[0])
     train_network_edgelist = construct_training_multiplex(train_edge_list, 
                                                         aux_edgetuple_list)
+    #free memory as a precaution for large datasets
+    train_edge_list.clear()
+    test_edge_list.clear()
 
     node_list = get_node_list(edgetuple_list)
 
@@ -127,6 +130,11 @@ def directed_test_procedure_targetlayer(model_dict: dict,
     random.shuffle(test_not_recip_samples)
     true_not_recip_values = [edge[3] for edge in test_not_recip_samples]
 
+    #again clear memory
+    reciprocal_samples.clear()
+    true_samples.clear()
+    not_reciprocal_samples.clear()
+    test_edge_list.clear()
 
     # iterate test over the models
     for model_name in tqdm(model_dict):
@@ -295,19 +303,21 @@ if __name__ == "__main__":
     from models.liamne import liamne
     from models.rmne import rmne
 
-    if cpu_count() > 2:
-        njobs = cpu_count() - 2
-    else:
-        njobs = 1
-
-    print("njobs",njobs)
-
     model_dict = {"mell": mell, "liamne": liamne, "rmne": rmne}
     metric_list = ["AUROC",
                    "accuracy",
                    "avg_prec"]
 
     args = parse_args()
+
+    if args.njobs > cpu_count() and args.njobs > 2:
+        njobs = cpu_count()
+    elif args.njobs < 0:
+        njobs = 0
+    else:
+        njobs = args.njobs
+
+    print("njobs", njobs)
 
     file_path = args.inpath
     data = edgetuplelist_from_csvfile(file_path)
