@@ -218,6 +218,8 @@ def parse_args():
     					help='path folder to save the results')
     parser.add_argument('-p', '--parallel', type=int, default=1,
     					help='set to parallel number of cores to be used or sequential if 0')
+    parser.add_argument('-l', '--layer', type=int, default=None,
+    					help='set to chosen layer {1,...,M} or leave out to iterate over all layers')
     return parser.parse_args()
     
 
@@ -311,5 +313,5 @@ if __name__=="__main__":
     train_network_edgelist = construct_training_multiplex(train_edge_list, 
                                                         aux_edgetuple_list)
     print(train_network_edgelist)
-    
+
     print("fin")
