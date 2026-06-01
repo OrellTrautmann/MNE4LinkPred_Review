@@ -5,7 +5,7 @@ from utils import (parse_args,
                    split_dataset, 
                    construct_training_multiplex, 
                    scores, 
-                   sigmoid_predictor,
+                   predictor,
                    get_node_list,  
                    split_target_auxiliary_layers,
                    get_reciprocals_sample,
@@ -29,6 +29,7 @@ def undirected_test_procedure_targetlayer(model_dict: dict,
                               sampling_method: str = "uniform", 
                               test_size = .2,
                               folder: str = '',
+                              predictor_name: str = "sigmoid",
                               seed = 1234):
     
     # generate reproducible random seeds 
@@ -75,16 +76,17 @@ def undirected_test_procedure_targetlayer(model_dict: dict,
         emb_object.fit(train_network_edgelist)
         source_emb, target_emb = emb_object.model_return()
 
-        predictions = list(map(int, sigmoid_predictor(source_emb.to_numpy(), 
-                                                    target_emb.to_numpy(), 
-                                                    test_samples)))
+        predictions = list(map(int, predictor(predictor_name,
+                                                source_emb.to_numpy(), 
+                                                target_emb.to_numpy(), 
+                                                test_samples)))
         
         results = scores(true_values, predictions)
 
         for_json_file.update(results)
 
         # write json file with results
-        with open(folder + f"/undirected_test_procedure_results_model_{model_name}_layer{target_layer}_run{run}_seed{seed}.json", "w", encoding="utf-8") as json_file:
+        with open(folder + f"/undirected_test_procedure_results_{model_name}_layer{target_layer}_{predictor_name}_run{run}_seed{seed}.json", "w", encoding="utf-8") as json_file:
             json.dump(for_json_file, json_file, ensure_ascii=False, indent=4)
 
 
@@ -97,6 +99,7 @@ def directed_test_procedure_targetlayer(model_dict: dict,
                             sampling_method: str = "uniform", 
                             test_size: float = .2,
                             folder: str = '',
+                            predictor_name: str = "sigmoid",
                             seed = 1234):
     
     # generate reproducible random seeds 
@@ -150,25 +153,27 @@ def directed_test_procedure_targetlayer(model_dict: dict,
         emb_object.fit(train_network_edgelist)
         source_emb, target_emb = emb_object.model_return()
 
-        recip_predictions = sigmoid_predictor(source_emb.to_numpy(), 
-                                            target_emb.to_numpy(), 
-                                            test_recip_samples)
+        recip_predictions = predictor(predictor_name,
+                                        source_emb.to_numpy(), 
+                                        target_emb.to_numpy(), 
+                                        test_recip_samples)
         recip_results = scores(true_recip_values, recip_predictions)
 
         for_recip_json_file.update(recip_results)
 
-        not_recip_predictions = sigmoid_predictor(source_emb.to_numpy(), 
-                                                target_emb.to_numpy(), 
-                                                test_not_recip_samples)
+        not_recip_predictions = predictor(predictor_name,
+                                            source_emb.to_numpy(), 
+                                            target_emb.to_numpy(), 
+                                            test_not_recip_samples)
         not_recip_results = scores(true_not_recip_values, not_recip_predictions)
 
         for_not_recip_json_file.update(not_recip_results)
 
         # write json file with results
-        with open(folder + f"/Reciprocals/reciprocal_directed_test_procedure_results_model_{model_name}_layer{target_layer}_run{run}_seed{seed}.json", "w", encoding="utf-8") as json_file:
+        with open(folder + f"/Reciprocals/reciprocal_directed_test_procedure_results_{model_name}_layer{target_layer}_{predictor_name}_run{run}_seed{seed}.json", "w", encoding="utf-8") as json_file:
             json.dump(for_recip_json_file, json_file, ensure_ascii=False, indent=4)
 
-        with open(folder + f"/NotReciprocals/not_reciprocal_directed_test_procedure_results_model_{model_name}_layer{target_layer}_run{run}_seed{seed}.json", "w", encoding="utf-8") as json_file:
+        with open(folder + f"/NotReciprocals/not_reciprocal_directed_test_procedure_results_{model_name}_layer{target_layer}_{predictor_name}_run{run}_seed{seed}.json", "w", encoding="utf-8") as json_file:
             json.dump(for_not_recip_json_file, json_file, ensure_ascii=False, indent=4)
 
 
@@ -183,7 +188,8 @@ def parallel_work(model_dict,
                     path_undirected,
                     path_directed,
                     num_layers,
-                    chosen_layer):
+                    chosen_layer,
+                    predictor_name):
             
             seed_everything(run_seed)
 
@@ -199,6 +205,7 @@ def parallel_work(model_dict,
                                                         sampling_method = sampling_method, 
                                                         test_size=test_size,
                                                         folder=path_undirected,
+                                                        predictor_name = predictor_name,
                                                         seed = new_seeds[target_layer-1])
                     
                     directed_test_procedure_targetlayer(model_dict = model_dict, 
@@ -210,6 +217,7 @@ def parallel_work(model_dict,
                                                         sampling_method = sampling_method, 
                                                         test_size=test_size,
                                                         folder=path_directed,
+                                                        predictor_name = predictor_name,
                                                         seed = new_seeds[target_layer-1])
                     
             elif chosen_layer in range(1, num_layers + 1):
@@ -223,6 +231,7 @@ def parallel_work(model_dict,
                                                     sampling_method = sampling_method, 
                                                     test_size=test_size,
                                                     folder=path_undirected,
+                                                    predictor_name = predictor_name,
                                                     seed = new_seed)
                 
                 directed_test_procedure_targetlayer(model_dict = model_dict, 
@@ -234,6 +243,7 @@ def parallel_work(model_dict,
                                                     sampling_method = sampling_method, 
                                                     test_size=test_size,
                                                     folder=path_directed,
+                                                    predictor_name = predictor_name,
                                                     seed = new_seed)
             else:
                 raise ValueError("target layer does not fit options!")
@@ -249,7 +259,8 @@ def test_procedure(model_dict: dict,
                    njobs: int = 1,
                    seed = 1234,
                    parallel = True,
-                   chosen_layer = None):
+                   chosen_layer = None,
+                   predictor_name = "sigmoid"):
     
     seed_everything(seed)
     seeds = np.random.randint(0, 10**6, runs)
@@ -271,7 +282,8 @@ def test_procedure(model_dict: dict,
                                                             path_undirected,
                                                             path_directed,
                                                             num_layers,
-                                                            chosen_layer) for run, run_seed in enumerate(seeds))
+                                                            chosen_layer,
+                                                            predictor_name) for run, run_seed in enumerate(seeds))
         
     else:
         for run, run_seed in enumerate(seeds):
@@ -286,18 +298,20 @@ def test_procedure(model_dict: dict,
                             path_undirected,
                             path_directed,
                             num_layers,
-                            chosen_layer)
+                            chosen_layer,
+                            predictor_name)
 
-def evaluation(outdir: str, network_name: str, metrics: list):
+def evaluation(outdir: str, network_name: str, metrics: list, predictor_name: str):
     subdir_list = ['/Undirected', '/Directed/NotReciprocals', '/Directed/Reciprocals']
     for subdir in subdir_list:
         final_stat_dict_list = list()
         path = outdir + '/' + network_name + subdir
         results = list()
         for file in os.listdir(path):
-            with open(path + '/' + file, 'r', encoding="utf-8") as json_file:
-                file_results = json.load(json_file)
-                results.append(file_results)
+            if predictor_name in file:
+                with open(path + '/' + file, 'r', encoding="utf-8") as json_file:
+                    file_results = json.load(json_file)
+                    results.append(file_results)
         
         results_df = pd.DataFrame.from_records(results)
         stat_df = results_df.groupby(["layer", "model"]).describe().round(3)
@@ -311,7 +325,7 @@ def evaluation(outdir: str, network_name: str, metrics: list):
 
             final_stat_dict_list.append(temp_dict)
 
-        file = f"result_table_{network_name}" + "_".join(subdir.split("/")) + ".tex"
+        file = f"result_table_{network_name}_pred{predictor_name}" + "_".join(subdir.split("/")) + ".tex"
         pd.DataFrame(final_stat_dict_list).to_latex(file, index=False)
 
 def edgetuplelist_from_csvfile(file_path: str):
@@ -353,8 +367,8 @@ if __name__ == "__main__":
     if not os.path.exists(outdir + '/' + network_name + '/Directed/Reciprocals'):
         os.makedirs(outdir + '/' + network_name + '/Directed/Reciprocals')
 
-    test_procedure(model_dict, data, emb_size=args.dim, runs = args.runs, network_name = network_name, sampling_method="uniform", test_size=args.testsize, outdir=outdir, njobs = njobs, seed = args.seed, parallel=bool(args.parallel), chosen_layer=args.layer)
+    test_procedure(model_dict, data, emb_size=args.dim, runs = args.runs, network_name = network_name, sampling_method="uniform", test_size=args.testsize, outdir=outdir, njobs = njobs, seed = args.seed, parallel=bool(args.parallel), chosen_layer=args.layer, predictor_name=args.predictor)
 
-    evaluation(outdir=outdir, network_name=network_name, metrics=metric_list)
+    evaluation(outdir=outdir, network_name=network_name, metrics=metric_list, predictor_name=args.predictor)
 
     print("fin")

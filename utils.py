@@ -214,6 +214,8 @@ def parse_args():
     					help='test set size ratio')
     parser.add_argument('-i', '--inpath', type=str, default='Datasets/Vickers/Vickers-Chan-7thGraders_multiplex.edges.txt',
     					help='path to the dataset')
+    parser.add_argument('--predictor', type=str, default="sigmoid",
+    					help='type of predictor: \"sigmoid\" or \"cosine\".')
     parser.add_argument('-o', '--outdir', type=str, default='Results',
     					help='path folder to save the results')
     parser.add_argument('-p', '--parallel', type=int, default=1,
@@ -233,8 +235,18 @@ def seed_everything(seed):
     #torch.use_deterministic_algorithms(True)
 
 def sigmoid_predictor(source_emb: np.array, target_emb: np.array, edgetuple_list):
-        return [np.round(1 / (1 + np.exp(-np.dot(source_emb[:,edge[1]-1], target_emb[:,edge[2]-1])))) for edge in edgetuple_list]
+    return [np.round(1 / (1 + np.exp(-np.dot(source_emb[:,edge[1]-1], target_emb[:,edge[2]-1])))) for edge in edgetuple_list]
 
+def cosine_predictor(source_emb: np.array, target_emb: np.array, edgetuple_list):
+    return [np.round(np.dot(source_emb[:, edge[1]-1], target_emb[:, edge[2]-1]) / (np.linalg.norm(source_emb[:, edge[1]-1], 2) * np.linalg.norm(target_emb[:, edge[2]-1], 2))) for edge in edgetuple_list]
+
+def predictor(predictor_name: str, source_emb: np.array, target_emb: np.array, edgetuple_list):
+    if predictor_name == "sigmoid":
+        return sigmoid_predictor(source_emb, target_emb, edgetuple_list)
+    elif predictor_name == "cosine":
+        return cosine_predictor(source_emb, target_emb, edgetuple_list)
+    else:
+        raise ValueError("predictor must be \"sigmoid\" (default) or \"cosine\"")
 
 def compute_statistics(model_layer, dataset_file, data_dict_lst):
     data_df = pd.DataFrame.from_records(data_dict_lst, index="run")
