@@ -152,8 +152,6 @@ def read_from_json(file_path_name: str):
     return result_dict
 
 def scores(y_true: list, y_pred: list): 
-    
-    print(y_true, y_pred)
     auroc = roc_auc_score(y_true, y_pred)
     
     ap_scr = average_precision_score(y_true, y_pred, average='macro')
@@ -242,7 +240,7 @@ def sigmoid_predictor(source_emb: np.array, target_emb: np.array, edgetuple_list
     return [1 / (1 + np.exp(-np.dot(source_emb[:,edge[1]-1], target_emb[:,edge[2]-1]))) for edge in edgetuple_list]
 
 def cosine_predictor(source_emb: np.array, target_emb: np.array, edgetuple_list):
-    return [np.dot(source_emb[:, edge[1]-1], target_emb[:, edge[2]-1]) / (np.linalg.norm(source_emb[:, edge[1]-1], 2) * np.linalg.norm(target_emb[:, edge[2]-1], 2)) for edge in edgetuple_list]
+    return [(1 + np.dot(source_emb[:, edge[1]-1], target_emb[:, edge[2]-1]) / (np.linalg.norm(source_emb[:, edge[1]-1], 2) * np.linalg.norm(target_emb[:, edge[2]-1], 2))) / 2 for edge in edgetuple_list]
 
 def aux_objective(source_emb: np.array, target_emb: np.array, node_list: list, val_edgetuple_list: list, seed: int = 0, n_trials: int = 10):
     assert (seed >= 0)
