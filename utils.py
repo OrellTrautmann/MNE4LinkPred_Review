@@ -3,17 +3,19 @@ import random
 import argparse
 import os
 import torch
-from sklearn.metrics import (precision_score, 
-                             roc_auc_score, 
+from sklearn.metrics import (roc_auc_score, 
                              accuracy_score, 
                              average_precision_score)
-
+from sklearn.model_selection import train_test_split
 import networkx as nx
 import itertools
 import json
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+from xgboost import XGBClassifier
+import optuna
+from copy import deepcopy
 
 def get_node_list(edgetuple_list: list):
     if len(edgetuple_list[0]) == 4:
@@ -240,13 +242,99 @@ def sigmoid_predictor(source_emb: np.array, target_emb: np.array, edgetuple_list
 def cosine_predictor(source_emb: np.array, target_emb: np.array, edgetuple_list):
     return [np.round(np.dot(source_emb[:, edge[1]-1], target_emb[:, edge[2]-1]) / (np.linalg.norm(source_emb[:, edge[1]-1], 2) * np.linalg.norm(target_emb[:, edge[2]-1], 2))) for edge in edgetuple_list]
 
-def predictor(predictor_name: str, source_emb: np.array, target_emb: np.array, edgetuple_list):
+def aux_objective(source_emb: np.array, target_emb: np.array, node_list: list, val_edgetuple_list: list, seed: int = 0, n_trials: int = 10):
+    assert (seed >= 0)
+    seed_everything(seed)
+    seeds = np.random.randint(0, 10**6, 5)
+
+    neg_val_edgetuple_list = uniform_neg_sampling(val_edgetuple_list, node_list=node_list, sample_size=len(val_edgetuple_list), seed=seeds[0])
+    edges = neg_val_edgetuple_list + val_edgetuple_list
+    seed_everything(seeds[1])
+    random.shuffle(edges)
+    weight_matrix = np.array([edge[3] for edge in edges])
+    Hadamard_matrix = np.array([source_emb[:, edge[1]-1] * target_emb[:, edge[2]-1] for edge in edges])
+
+    X_TRAIN, X_TEST, Y_TRAIN, Y_TEST = train_test_split(Hadamard_matrix, weight_matrix, random_state=seeds[2])
+
+    PARAMS = {
+    "XGBClassifier": dict(
+        default=dict(random_state=42, objective='binary:logistic'),
+        learning_rate={"type": "float", "lb": 0.01,
+                       "ub": 1, "div_factor": 100},
+        max_depth={"type": "int", "lb": 2, "ub": 50, "div_factor": 1},
+        n_estimators={"type": "int", "lb": 2, "ub": 100, "div_factor": 1},
+    ),}
+
+    PARAMS["XGBClassifier"]["default"]["random_state"] = seeds[3]
+
+    def objective(trial):
+        nonlocal X_TRAIN, X_TEST, Y_TRAIN, Y_TEST, n_trials
+
+        params_ = deepcopy(PARAMS["XGBClassifier"]["default"])
+
+        for param_name in PARAMS["XGBClassifier"]:
+            if (param_name == "default"):
+                continue
+            type_ = PARAMS["XGBClassifier"][param_name]["type"]
+            lb = PARAMS["XGBClassifier"][param_name]["lb"]
+            ub = PARAMS["XGBClassifier"][param_name]["ub"]
+            params_.update(
+                {param_name: eval("trial.suggest_"+type_)(param_name, lb, ub)})
+
+        test_predictor = XGBClassifier(**params_)
+
+        test_predictor.fit(X_TRAIN, np.array(Y_TRAIN).ravel())
+        y_pred = test_predictor.predict(X_TEST)
+
+        # metric  to optimize
+        score = accuracy_score(Y_TEST, y_pred)
+
+        return score
+
+    study = optuna.create_study(
+        direction='maximize', sampler=optuna.samplers.QMCSampler(seed=42))
+    study.optimize(objective, n_trials=n_trials)
+
+    # Print the best parameters found
+    print("Best trial:")
+    trial = study.best_trial
+
+    print("Value: {:.4f}".format(trial.value))
+
+    print("Params: ")
+    for key, value in trial.params.items():
+        print("    {}: {}".format(key, value))
+
+    parameters = {"random_state": seeds[4],
+                    "objective": "binary:logistic", **trial.params}
+
+    return XGBClassifier(**parameters)
+
+def xgb_predictor(source_emb: np.array, target_emb: np.array, val_edgetuple_list: list, edgetuple_list: list, node_list: list, seed: int = 0):
+    seed_everything(seed)
+    seeds = np.random.randint(0, 10**6, 5)
+    pred = aux_objective(source_emb, target_emb, node_list, val_edgetuple_list, seed = seeds[0], n_trials=20)
+
+    neg_val_edgetuple_list = uniform_neg_sampling(val_edgetuple_list, node_list=node_list, sample_size=len(val_edgetuple_list), seed=seeds[1])
+    edges = neg_val_edgetuple_list + val_edgetuple_list
+    seed_everything(seeds[2])
+    random.shuffle(edges)
+    Hadamard_matrix_train = np.array([source_emb[:, edge[1]-1] * target_emb[:, edge[2]-1] for edge in edges])
+    weight_matrix = np.array([edge[3] for edge in edges])
+    pred.fit(Hadamard_matrix_train, weight_matrix)
+
+    Hadamard_matrix_test = np.array([source_emb[:, edge[1]-1] * target_emb[:, edge[2]-1] for edge in edgetuple_list])
+    return pred.predict(Hadamard_matrix_test).tolist() 
+
+def predictor(predictor_name: str, source_emb: np.array, target_emb: np.array, edgetuple_list: list, val_edgetuple_list: list = None, node_list: list = None, seed: int = 0):
     if predictor_name == "sigmoid":
         return sigmoid_predictor(source_emb, target_emb, edgetuple_list)
     elif predictor_name == "cosine":
         return cosine_predictor(source_emb, target_emb, edgetuple_list)
+    elif predictor_name == "xgb":
+        return xgb_predictor(source_emb, target_emb, val_edgetuple_list, edgetuple_list, node_list, seed)
     else:
-        raise ValueError("predictor must be \"sigmoid\" (default) or \"cosine\"")
+        raise ValueError("predictor must be \"sigmoid\" (default), \"cosine\" or \"xgb\"")
 
 def compute_statistics(model_layer, dataset_file, data_dict_lst):
     data_df = pd.DataFrame.from_records(data_dict_lst, index="run")

@@ -34,7 +34,7 @@ def undirected_test_procedure_targetlayer(model_dict: dict,
     
     # generate reproducible random seeds 
     seed_everything(seed)
-    seeds = np.random.randint(0, 10**6, 4)
+    seeds = np.random.randint(0, 10**6, 5)
 
     # construct training network
     target_edgetuple_list, aux_edgetuple_list = split_target_auxiliary_layers(edgetuple_list, 
@@ -78,8 +78,11 @@ def undirected_test_procedure_targetlayer(model_dict: dict,
 
         predictions = list(map(int, predictor(predictor_name,
                                                 source_emb.to_numpy(), 
-                                                target_emb.to_numpy(), 
-                                                test_samples)))
+                                                target_emb.to_numpy(),
+                                                test_samples,
+                                                train_edge_list, 
+                                                node_list,
+                                                seeds[4])))
         
         results = scores(true_values, predictions)
 
@@ -104,7 +107,7 @@ def directed_test_procedure_targetlayer(model_dict: dict,
     
     # generate reproducible random seeds 
     seed_everything(seed)
-    seeds = np.random.randint(0, 10**6, 6)
+    seeds = np.random.randint(0, 10**6, 7)
 
     # construct training network
     target_edgetuple_list, aux_edgetuple_list = split_target_auxiliary_layers(edgetuple_list, 
@@ -124,9 +127,9 @@ def directed_test_procedure_targetlayer(model_dict: dict,
     random.shuffle(test_recip_samples)
     true_recip_values = [edge[3] for edge in test_recip_samples]
 
-    not_reciprocal_samples = sample_not_reciprocals(edgetuple_list, node_list, len(test_edge_list), seed = seeds[4])
+    not_reciprocal_samples = sample_not_reciprocals(edgetuple_list, node_list, len(test_edge_list), seed = seeds[3])
     test_not_recip_samples = test_edge_list + not_reciprocal_samples
-    seed_everything(seeds[2])
+    seed_everything(seeds[4])
     random.shuffle(test_not_recip_samples)
     true_not_recip_values = [edge[3] for edge in test_not_recip_samples]
 
@@ -156,7 +159,10 @@ def directed_test_procedure_targetlayer(model_dict: dict,
         recip_predictions = predictor(predictor_name,
                                         source_emb.to_numpy(), 
                                         target_emb.to_numpy(), 
-                                        test_recip_samples)
+                                        test_recip_samples,
+                                        train_edge_list, 
+                                        node_list,
+                                        seeds[5])
         recip_results = scores(true_recip_values, recip_predictions)
 
         for_recip_json_file.update(recip_results)
@@ -164,7 +170,10 @@ def directed_test_procedure_targetlayer(model_dict: dict,
         not_recip_predictions = predictor(predictor_name,
                                             source_emb.to_numpy(), 
                                             target_emb.to_numpy(), 
-                                            test_not_recip_samples)
+                                            test_not_recip_samples,
+                                            train_edge_list, 
+                                            node_list,
+                                            seeds[6])
         not_recip_results = scores(true_not_recip_values, not_recip_predictions)
 
         for_not_recip_json_file.update(not_recip_results)
