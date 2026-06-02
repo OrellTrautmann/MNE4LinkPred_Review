@@ -76,13 +76,13 @@ def undirected_test_procedure_targetlayer(model_dict: dict,
         emb_object.fit(train_network_edgelist)
         source_emb, target_emb = emb_object.model_return()
 
-        predictions = list(map(int, predictor(predictor_name,
-                                                source_emb.to_numpy(), 
-                                                target_emb.to_numpy(),
-                                                test_samples,
-                                                train_edge_list, 
-                                                node_list,
-                                                seeds[4])))
+        predictions = predictor(predictor_name,
+                                source_emb.to_numpy(), 
+                                target_emb.to_numpy(),
+                                test_samples,
+                                train_edge_list, 
+                                node_list,
+                                seeds[4])
         
         results = scores(true_values, predictions)
 
@@ -348,7 +348,10 @@ if __name__ == "__main__":
     from models.liamne import liamne
     from models.rmne import rmne
 
-    model_dict = {"mell": mell, "liamne": liamne, "rmne": rmne}
+    model_dict = {"mell": mell, 
+                  "liamne": liamne, 
+                  "rmne": rmne}
+    
     metric_list = ["AUROC",
                    "accuracy",
                    "avg_prec"]

@@ -153,11 +153,13 @@ def read_from_json(file_path_name: str):
 
 def scores(y_true: list, y_pred: list): 
     
+    print(y_true, y_pred)
     auroc = roc_auc_score(y_true, y_pred)
     
-    acc_scr = accuracy_score(y_true, y_pred)
-    
     ap_scr = average_precision_score(y_true, y_pred, average='macro')
+
+    y_pred = list(map(lambda x: int(round(x)), y_pred))
+    acc_scr = accuracy_score(y_true, y_pred)
         
     score_dict = dict(AUROC = auroc,
                       accuracy = acc_scr,
@@ -237,10 +239,10 @@ def seed_everything(seed):
     #torch.use_deterministic_algorithms(True)
 
 def sigmoid_predictor(source_emb: np.array, target_emb: np.array, edgetuple_list):
-    return [np.round(1 / (1 + np.exp(-np.dot(source_emb[:,edge[1]-1], target_emb[:,edge[2]-1])))) for edge in edgetuple_list]
+    return [1 / (1 + np.exp(-np.dot(source_emb[:,edge[1]-1], target_emb[:,edge[2]-1]))) for edge in edgetuple_list]
 
 def cosine_predictor(source_emb: np.array, target_emb: np.array, edgetuple_list):
-    return [np.round(np.dot(source_emb[:, edge[1]-1], target_emb[:, edge[2]-1]) / (np.linalg.norm(source_emb[:, edge[1]-1], 2) * np.linalg.norm(target_emb[:, edge[2]-1], 2))) for edge in edgetuple_list]
+    return [np.dot(source_emb[:, edge[1]-1], target_emb[:, edge[2]-1]) / (np.linalg.norm(source_emb[:, edge[1]-1], 2) * np.linalg.norm(target_emb[:, edge[2]-1], 2)) for edge in edgetuple_list]
 
 def aux_objective(source_emb: np.array, target_emb: np.array, node_list: list, val_edgetuple_list: list, seed: int = 0, n_trials: int = 10):
     assert (seed >= 0)
@@ -324,7 +326,7 @@ def xgb_predictor(source_emb: np.array, target_emb: np.array, val_edgetuple_list
     pred.fit(Hadamard_matrix_train, weight_matrix)
 
     Hadamard_matrix_test = np.array([source_emb[:, edge[1]-1] * target_emb[:, edge[2]-1] for edge in edgetuple_list])
-    return pred.predict(Hadamard_matrix_test).tolist() 
+    return pred.predict_proba(Hadamard_matrix_test)[:,1].tolist() 
 
 def predictor(predictor_name: str, source_emb: np.array, target_emb: np.array, edgetuple_list: list, val_edgetuple_list: list = None, node_list: list = None, seed: int = 0):
     if predictor_name == "sigmoid":
